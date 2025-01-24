@@ -4,10 +4,14 @@ pub mod conf;
 pub mod logging;
 pub mod db;
 
+pub mod components;
+
 use std::fs;
 
 use leptos::prelude::*;
+use leptos::mount::mount_to_body;
 
+use components::app::__App;
 use logging::{Logger, LogLevel};
 
 /// A struct of named strings which refer to filenames of SQL queries in the program
@@ -25,7 +29,7 @@ static QUERY_FILES: QueryFiles = QueryFiles {
 /// Main Function for program
 fn main() {
     console_error_panic_hook::set_once();
-    leptos::mount::mount_to_body(|| view! { <p>"Hello, world!"</p> })
+    mount_to_body(__App)
 }
 
 /// Return the contents of a file as a string, printing a helpful error message
