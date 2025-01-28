@@ -1,0 +1,1 @@
+CREATE DATABASE rs_party;

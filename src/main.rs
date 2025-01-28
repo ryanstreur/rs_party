@@ -1,40 +1,41 @@
 //! Main module
-
 pub mod conf;
-pub mod logging;
 pub mod db;
+pub mod logging;
+pub mod model;
 
-pub mod components;
+use model::NewUserParams;
+use rocket::response::status;
+use rocket::serde::json::Json;
 
-use std::fs;
+#[macro_use]
+extern crate rocket;
 
-use leptos::prelude::*;
-use leptos::mount::mount_to_body;
-
-use components::app::__App;
-use logging::{Logger, LogLevel};
-
-/// A struct of named strings which refer to filenames of SQL queries in the program
-pub struct QueryFiles {
-    query1: &'static str,
+#[get("/")]
+fn index() -> &'static str {
+    "Hello, world!"
 }
 
-/// The Query files themselves
-static QUERY_FILES: QueryFiles = QueryFiles {
-    query1: "src/sql/query1.sql",
-};
+#[get("/users")]
+fn users() -> status::Accepted<Json<model::User>> {
+    let res = model::User {
+        id: 0,
+        name: "test user".to_string(),
+        email: "test@example.com".to_string(),
+        is_superuser: false,
+    };
 
-// TODO: write a test which iterates over the queries and tests that each of the files is present
-
-/// Main Function for program
-fn main() {
-    console_error_panic_hook::set_once();
-    mount_to_body(__App)
+    status::Accepted(Json(res))
 }
 
-/// Return the contents of a file as a string, printing a helpful error message
-/// if opening the file fails.
-fn file_text(file_path: &str) -> String {
-    let error_message = format!("Error opening file: {}", file_path);
-    fs::read_to_string(file_path).expect(&error_message)
+#[post("/users/new", format="application/json", data="<user_in>")]
+fn new_user(user_in: NewUserParams) -> status::Accepted<Json<model::User>> {
+  
+}
+
+#[launch]
+fn rocket() -> _ {
+    rocket::build()
+        .mount("/", routes![index])
+        .mount("/users", routes![users])
 }

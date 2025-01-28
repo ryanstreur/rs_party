@@ -15,3 +15,15 @@ Project for Winter Classes 2025.
 ## To Operate
 
 - [ ] Set up LetsEncrypt
+- [ ] Generate Encryption Key
+
+## Data Model
+
+```puml
+
+```
+
+## Sources of Inspiration
+
+- User model - [Django web framework's `django.contrib.auth` module](https://docs.djangoproject.com/en/5.1/ref/contrib/auth/)
+- Password storage and authentication: [OWASP ASVS](https://raw.githubusercontent.com/OWASP/ASVS/v4.0.3/4.0/OWASP%20Application%20Security%20Verification%20Standard%204.0.3-en.pdf)

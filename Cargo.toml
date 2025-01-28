@@ -7,7 +7,9 @@ edition = "2021"
 
 [dependencies]
 getopts = "0.2.21"
-leptos = { version = "0.7.4", features = ["csr"] }
 
 # https://book.leptos.dev/getting_started/leptos_dx.html#1-set-up-console_error_panic_hook
 console_error_panic_hook = "0.1.7"
+rocket = {version = "0.5.1", features = ["secrets", "tls", "json"] }
+sqlx = "0.8.3"
+rocket_db_pools = "0.2.0"
