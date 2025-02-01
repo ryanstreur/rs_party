@@ -27,3 +27,7 @@ Project for Winter Classes 2025.
 
 - User model - [Django web framework's `django.contrib.auth` module](https://docs.djangoproject.com/en/5.1/ref/contrib/auth/)
 - Password storage and authentication: [OWASP ASVS](https://raw.githubusercontent.com/OWASP/ASVS/v4.0.3/4.0/OWASP%20Application%20Security%20Verification%20Standard%204.0.3-en.pdf)
+
+## Useful Documentation Links
+
+- [rocket_db_pools](https://api.rocket.rs/master/rocket_db_pools)
