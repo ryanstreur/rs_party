@@ -1,23 +1,17 @@
+extern crate bcrypt;
+use chrono::{DateTime, Utc};
+use rocket::Request;
 use rocket_db_pools::sqlx::PgPool;
 use rocket_db_pools::{Connection, Database};
 
 use rocket_db_pools::sqlx;
 
-use crate::model::{NewUserParams, User};
+use crate::fairings::TimeStart;
+use crate::model::{LoginParams, NewUserParams, RequestLogEntry, User};
 
 #[derive(Database)]
 #[database("rs_party")] // Maps to key under 'default.databases' in Rocket.toml
 pub struct AppDb(PgPool);
-
-/// A struct of named strings which refer to filenames of SQL queries in the program
-pub struct QueryFiles {
-    query1: &'static str,
-}
-
-/// The Query files themselves
-static QUERY_FILES: QueryFiles = QueryFiles {
-    query1: "src/sql/query1.sql",
-};
 
 // TODO: write a test which iterates over the queries and tests that each of the files is present
 
@@ -33,9 +27,71 @@ pub async fn get_all_users(mut db: Connection<AppDb>) -> Result<Vec<User>, sqlx:
         .await
 }
 
-pub async fn insert_user(mut db: Connection<AppDb>, new_user: &NewUserParams) -> Result<User, sqlx::Error> {
+pub async fn insert_user(
+    mut db: Connection<AppDb>,
+    new_user: &NewUserParams,
+) -> Result<User, sqlx::Error> {
     // Create a secure hash with the password
 
-    sqlx::query_as::<_, User>(r#"INSERT INTO rs_party.user (email_address, name) VALUES ( $1, $2 ) RETURNING id, email_address, name, is_superuser;"#
-    ).bind(&new_user.email).bind(&new_user.name).fetch_one(&mut **db).await
+    let hashed_password = match bcrypt::hash(&new_user.password, bcrypt::DEFAULT_COST) {
+        Ok(hashed) => hashed,
+        Err(_) => "Garbage".to_string(),
+    };
+
+    sqlx::query_as::<_, User>(r#"INSERT INTO rs_party.user (email_address, name, password) VALUES ( $1, $2, $3 ) RETURNING id, email_address, name, is_superuser;"#
+    ).bind(&new_user.email).bind(&new_user.name).bind(&hashed_password).fetch_one(&mut **db).await
+}
+
+pub async fn login(mut db: Connection<AppDb>, login_params: &LoginParams) -> Result<User, String> {
+    let user_res =
+        sqlx::query_as::<_, User>(r#"SELECT * FROM rs_party.user WHERE email_address = $1;"#)
+            .bind(&login_params.email_address)
+            .fetch_one(&mut **db)
+            .await;
+
+    match user_res {
+        Ok(user) => {
+            let passwords_match_res = bcrypt::verify(&login_params.password, &user.password);
+
+            match passwords_match_res {
+                Ok(passwords_match) => {
+                    if !passwords_match {
+                        return Err("password mismatch".to_string());
+                    }
+
+                    Ok(user)
+                }
+                Err(e) => Err(e.to_string()),
+            }
+        }
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+pub async fn log_request<'a>(mut db: Connection<AppDb>, req: &Request<'a>) {
+    let time_received_opt = req.local_cache(|| crate::fairings::TimeStart(None)).0;
+
+    let entry = RequestLogEntry {
+        time_received: match time_received_opt {
+            Some(time) => time,
+            None => Utc::now(),
+        },
+        time_logged: Utc::now(),
+        method: req.method().to_string(),
+        req_url: req.uri().to_string(),
+        req_headers: req
+            .headers()
+            .iter()
+            .map(|h| format!("{}: {}", h.name(), h.value()))
+            .collect::<Vec<String>>()
+            .join(", "),
+    };
+
+    sqlx::query(
+        r#"INSERT INTO rs_party.request_log (time_received, time_logged, method, req_url, req_headers) VALUES ($1, $2, $3, $4, $5);"#,
+    ).bind(entry.time_received)
+    .bind(entry.time_logged)
+    .bind(entry.method)
+    .bind(entry.req_url)
+    .bind(entry.req_headers);
 }

@@ -15,3 +15,4 @@ rocket_db_pools = {version = "0.2.0", features = ["sqlx_postgres"]}
 
 
 chrono = "0.4.39"
+bcrypt = "0.17.0"

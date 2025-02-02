@@ -74,13 +74,15 @@ CREATE TABLE IF NOT EXISTS rs_party.role (
 
 CREATE TABLE IF NOT EXISTS rs_party.request_log (
   id bigint GENERATED ALWAYS AS IDENTITY
+  , time_received timestamptz
+  , time_logged timestamptz
   , method text
-  , headers text
-  , body text
+  , req_url text
+  , req_headers text
 );
 
 -- Insert Superuser
 INSERT INTO rs_party.user (name, email_address, password, is_superuser, email_confirmed)
 VALUES (
-  'Admin', 'admin@example.com', 'admin', true, true
+  'Admin', 'admin@example.com', '$2b$12$5ZtPng4BuPu/9hjd2J23.u/Dp5hbrcDj9DqA.3R7VLxXmLDUy0J5m', true, true
 );
