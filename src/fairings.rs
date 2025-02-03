@@ -28,62 +28,62 @@ impl<'h> Into<Header<'h>> for TimingHeader {
     }
 }
 
-pub struct RequestLoggerFairing<'a> {
-  rocket: &'a Rocket<Orbit>
-}
+// pub struct RequestLoggerFairing<'a> {
+//   rocket: &'a Rocket<Orbit>
+// }
 
-#[rocket::async_trait]
-impl Fairing for RequestLoggerFairing {
-    fn info(&self) -> Info {
-        Info {
-            name: "RequestLogger",
-            kind: Kind::Liftoff | Kind::Request | Kind::Response,
-        }
-    }
+// #[rocket::async_trait]
+// impl Fairing for RequestLoggerFairing {
+//     fn info(&self) -> Info {
+//         Info {
+//             name: "RequestLogger",
+//             kind: Kind::Liftoff | Kind::Request | Kind::Response,
+//         }
+//     }
 
-    async fn on_liftoff(&self, rocket: &Rocket<Orbit>) {
-      self.rocket = rocket;
-    }
+//     async fn on_liftoff(&self, rocket: &Rocket<Orbit>) {
+//       self.rocket = rocket;
+//     }
 
-    // Increment the counter for `GET` and `POST` requests.
-    async fn on_request(&self, req: &mut Request<'_>, _: &mut Data<'_>) {
-        let timing_header = TimingHeader {
-            time_received: Utc::now(),
-        };
+//     // Increment the counter for `GET` and `POST` requests.
+//     async fn on_request(&self, req: &mut Request<'_>, _: &mut Data<'_>) {
+//         let timing_header = TimingHeader {
+//             time_received: Utc::now(),
+//         };
 
-        req.add_header(timing_header);
-        req.local_cache(|| TimeStart(Some(Utc::now())));
-    }
+//         req.add_header(timing_header);
+//         req.local_cache(|| TimeStart(Some(Utc::now())));
+//     }
 
-    async fn on_response<'r>(&self, req: &'r Request<'_>, res: &mut Response<'r>) {
-      let mut time_received_headers = req.headers().get("time_received");
+//     async fn on_response<'r>(&self, req: &'r Request<'_>, res: &mut Response<'r>) {
+//       let mut time_received_headers = req.headers().get("time_received");
 
-      // Local cache technique
-      let start_time_cached = req.local_cache(|| TimeStart(None));
-      match start_time_cached.0 {
-        Some(start_time) => {
-          println!("Start time from cache: {}", start_time.to_string());
-          let end_time = Utc::now();
+//       // Local cache technique
+//       let start_time_cached = req.local_cache(|| TimeStart(None));
+//       match start_time_cached.0 {
+//         Some(start_time) => {
+//           println!("Start time from cache: {}", start_time.to_string());
+//           let end_time = Utc::now();
 
-          println!("End time from cache: {}", end_time.to_string());
+//           println!("End time from cache: {}", end_time.to_string());
 
-          let millis = end_time.timestamp_millis() - start_time.timestamp_millis();
-          println!("Milliseconds for request: {}", millis);
+//           let millis = end_time.timestamp_millis() - start_time.timestamp_millis();
+//           println!("Milliseconds for request: {}", millis);
 
-          res.set_raw_header("X-Response-Time", format!("{} ms", millis));
-        },
-        None => println!("Failed to retrieve start time from cache")
-      }
+//           res.set_raw_header("X-Response-Time", format!("{} ms", millis));
+//         },
+//         None => println!("Failed to retrieve start time from cache")
+//       }
 
-      let db = AppDb::fetch(self.rocket).unwrap();
+//       let db = AppDb::fetch(self.rocket).unwrap();
 
       
 
-      // Header technique
-      let time_received_option = time_received_headers.next();
-      match time_received_option {
-        Some(time_str) => println!("Time received: {}", time_str),
-        None => println!("Time Received not stored!")
-      }
-    }
-}
+//       // Header technique
+//       let time_received_option = time_received_headers.next();
+//       match time_received_option {
+//         Some(time_str) => println!("Time received: {}", time_str),
+//         None => println!("Time Received not stored!")
+//       }
+//     }
+// }

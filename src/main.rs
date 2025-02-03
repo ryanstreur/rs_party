@@ -3,7 +3,7 @@
 use rocket_db_pools::Database;
 
 use rs_party::db::AppDb;
-use rs_party::fairings::RequestLoggerFairing;
+// use rs_party::fairings::RequestLoggerFairing;
 use rs_party::routes::{index, first_user, register, login};
 
 #[macro_use]
@@ -14,6 +14,6 @@ extern crate rocket;
 fn rocket() -> _ {
     rocket::build()
         .attach(AppDb::init())
-        .attach(RequestLoggerFairing)
+        // .attach(RequestLoggerFairing)
         .mount("/", routes![index, first_user, register, login])
 }

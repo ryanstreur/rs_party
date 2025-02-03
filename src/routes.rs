@@ -47,53 +47,53 @@ struct AppError {
     message: String,
 }
 
-impl <'r> FromRequest<'r> for AppDb {
-  type Error = AppError;
+// impl <'r> FromRequest<'r> for AppDb {
+//   type Error = AppError;
 
-  fn from_request(_: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-    Outcome::Success(Self(PgPool))
-  }
-}
+//   fn from_request(_: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+//     Outcome::Success(Self(PgPool))
+//   }
+// }
 
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for User {
-    type Error = AppError;
+// #[rocket::async_trait]
+// impl<'r> FromRequest<'r> for User {
+//     type Error = AppError;
 
-    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        // Outcome::Success(RequestRef { req: &request })
+//     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+//         // Outcome::Success(RequestRef { req: &request })
 
-        let user_id_option = request.headers().get_one("Authorization");
+//         let user_id_option = request.headers().get_one("Authorization");
 
-        let user_id_str = match user_id_option {
-            Some(id) => id,
-            None => {
-                return Outcome::Error((
-                    Status::Unauthorized,
-                    AppError {
-                        message: "No Authorization header".to_string(),
-                    },
-                ));
-            }
-        };
+//         let user_id_str = match user_id_option {
+//             Some(id) => id,
+//             None => {
+//                 return Outcome::Error((
+//                     Status::Unauthorized,
+//                     AppError {
+//                         message: "No Authorization header".to_string(),
+//                     },
+//                 ));
+//             }
+//         };
 
-        let user_id_parse_result = user_id_str.parse::<i64>();
+//         let user_id_parse_result = user_id_str.parse::<i64>();
 
-        let user_id = match user_id_parse_result {
-          Ok(id) => id,
-          Err(_) => {
-            return Outcome::Error((
-              status::BadRequest,
-              AppError {
-                message: "Could not parse User Id from Header".to_string()
-              }
-            ))
-          }
-        };
+//         let user_id = match user_id_parse_result {
+//           Ok(id) => id,
+//           Err(_) => {
+//             return Outcome::Error((
+//               status::BadRequest,
+//               AppError {
+//                 message: "Could not parse User Id from Header".to_string()
+//               }
+//             ))
+//           }
+//         };
 
-        let db = AppDb::from_request(request);
+//         let db = AppDb::from_request(request);
 
-    }
-}
+//     }
+// }
 
 #[get("/login", data = "<login_params_in>")]
 pub async fn login(
