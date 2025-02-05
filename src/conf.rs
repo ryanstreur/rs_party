@@ -18,16 +18,16 @@ pub struct Configuration {
 }
 
 impl Default for Configuration {
-  fn default() -> Self {
-      Configuration {
-        verbose: false,
-        pghost: "localhost".to_string(),
-        pguser: "postgres".to_string(),
-        pgpass: "postgres".to_string(),
-        pgport: 5432,
-        pgdatabase: "postgres".to_string(),
-      }
-  }
+    fn default() -> Self {
+        Configuration {
+            verbose: false,
+            pghost: "localhost".to_string(),
+            pguser: "postgres".to_string(),
+            pgpass: "postgres".to_string(),
+            pgport: 5432,
+            pgdatabase: "postgres".to_string(),
+        }
+    }
 }
 
 /// Parse options and return configuration struct

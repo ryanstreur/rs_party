@@ -10,7 +10,6 @@ use rocket::{
 };
 use rocket_db_pools::Database;
 
-
 use crate::db::AppDb;
 
 pub struct TimingHeader {
@@ -76,8 +75,6 @@ impl<'h> Into<Header<'h>> for TimingHeader {
 //       }
 
 //       let db = AppDb::fetch(self.rocket).unwrap();
-
-      
 
 //       // Header technique
 //       let time_received_option = time_received_headers.next();

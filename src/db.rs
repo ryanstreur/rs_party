@@ -68,7 +68,10 @@ pub async fn login(mut db: Connection<AppDb>, login_params: &LoginParams) -> Res
     }
 }
 
-pub async fn log_request<'a>(mut db: Connection<AppDb>, req: &Request<'a>) {
+pub async fn log_request<'a>(
+    mut db: Connection<AppDb>,
+    req: &Request<'a>,
+) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
     let time_received_opt = req.local_cache(|| crate::fairings::TimeStart(None)).0;
 
     let entry = RequestLogEntry {
@@ -93,5 +96,6 @@ pub async fn log_request<'a>(mut db: Connection<AppDb>, req: &Request<'a>) {
     .bind(entry.time_logged)
     .bind(entry.method)
     .bind(entry.req_url)
-    .bind(entry.req_headers);
+    .bind(entry.req_headers)
+    .execute(&mut **db).await
 }
