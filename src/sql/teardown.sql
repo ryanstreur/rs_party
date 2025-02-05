@@ -1,6 +1,3 @@
--- Connect to database
-\c rs_party
-
 -- Drop the tables
 DROP TABLE IF EXISTS rs_party.invitation;
 DROP TABLE IF EXISTS rs_party.role;

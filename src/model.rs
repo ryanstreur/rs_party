@@ -1,6 +1,6 @@
 //! Data model for party planner application
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, TimeDelta};
 use rocket::serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 
@@ -55,4 +55,15 @@ pub struct RequestLogEntry {
     pub method: String,
     pub req_url: String,
     pub req_headers: String,
+}
+
+
+#[derive(FromRow)]
+pub struct Session {
+  pub id: i64,
+  pub key: uuid::Uuid,
+  pub session_data: String,
+  pub created: DateTime<Utc>,
+  pub updated: DateTime<Utc>,
+  pub valid_for: TimeDelta
 }

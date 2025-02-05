@@ -1,6 +1,3 @@
--- Connect to Database
-\c rs_party;
-
 -- Create Schema
 CREATE SCHEMA IF NOT EXISTS rs_party;
 
@@ -34,7 +31,9 @@ CREATE TABLE IF NOT EXISTS rs_party.session (
   id bigint GENERATED ALWAYS AS IDENTITY
   , session_key uuid
   , session_data text
-  -- , expire_date timestamp with timezone
+  , created timestamptz
+  , updated timestamptz
+  , valid_for interval
 );
 
 
