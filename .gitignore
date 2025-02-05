@@ -12,3 +12,4 @@ Rocket.toml
 *.fls
 *.log
 *.synctex.gz
+*.out
