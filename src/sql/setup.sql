@@ -30,11 +30,11 @@ CREATE TABLE IF NOT EXISTS rs_party.user (
 CREATE TABLE IF NOT EXISTS rs_party.session (
   id bigint GENERATED ALWAYS AS IDENTITY
   , session_key uuid
+  , user_id bigint
   , session_data text
   , created timestamptz
   , updated timestamptz
-  , valid_for interval
-);
+  , CONSTRAINT session_user_fk FOREIGN KEY (user_id) REFERENCES rs_party.user (id));
 
 
 CREATE TABLE IF NOT EXISTS rs_party.event (

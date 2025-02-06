@@ -8,10 +8,16 @@ edition = "2021"
 [dependencies]
 getopts = "0.2.21"
 
-sqlx = { version = "0.7.4", features = [ "runtime-tokio", "postgres", "macros", "chrono"] }
+sqlx = { version = "0.7", features = [
+  "runtime-tokio",
+  "postgres",
+  "macros",
+  "chrono",
+  "uuid",
+] }
 
-rocket = {version = "0.5.1", features = ["secrets", "tls", "json"] }
-rocket_db_pools = {version = "0.2.0", features = ["sqlx_postgres"]}
+rocket = { version = "0.5.1", features = ["secrets", "tls", "json"] }
+rocket_db_pools = { version = "0.2.0", features = ["sqlx_postgres"] }
 
 
 chrono = "0.4.39"
@@ -19,6 +25,4 @@ bcrypt = "0.17.0"
 
 [dependencies.uuid]
 version = "1.13.1"
-features = [
-  "v4"
-]
+features = ["v4"]

@@ -99,7 +99,7 @@ struct AppError {
 pub async fn login(
     db: Connection<AppDb>,
     login_params_in: Json<LoginParams>,
-) -> Result<Json<model::User>, (Status, String)> {
+) -> Result<String, String> {
     let login_params = login_params_in.into_inner();
 
     // let login_params = match login_params_result {
@@ -112,7 +112,7 @@ pub async fn login(
     // db::log_request(db, req);
 
     match user_result {
-        Ok(user) => Ok(Json(user)),
-        Err(err_str) => Err((Status::NotAcceptable, err_str)),
+        Ok(session_id) => Ok(session_id),
+        Err(err_str) => Err(err_str),
     }
 }

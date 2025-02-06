@@ -1,8 +1,8 @@
 //! Data model for party planner application
 
-use chrono::{DateTime, Utc, TimeDelta};
+use chrono::{DateTime, TimeDelta, Utc};
 use rocket::serde::{Deserialize, Serialize};
-use sqlx::prelude::FromRow;
+use sqlx::{prelude::FromRow, Decode};
 
 // enum PartyRole {
 //   Guest,
@@ -57,13 +57,17 @@ pub struct RequestLogEntry {
     pub req_headers: String,
 }
 
-
-#[derive(FromRow)]
+#[derive(Debug, FromRow)]
 pub struct Session {
-  pub id: i64,
-  pub key: uuid::Uuid,
-  pub session_data: String,
-  pub created: DateTime<Utc>,
-  pub updated: DateTime<Utc>,
-  pub valid_for: TimeDelta
+    pub session_key: uuid::Uuid,
+    pub user_id: i64,
+    pub session_data: String,
+    pub created: DateTime<Utc>,
+    pub updated: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ApiError {
+  pub status_code: i32,
+  pub error: String,
 }
