@@ -59,11 +59,10 @@ pub async fn login(mut db: Connection<AppDb>, login_params: &LoginParams) -> Res
 
             match passwords_match_res {
                 Ok(passwords_match) => {
-                    if !passwords_match {
-                        return Err("password mismatch".to_string());
-                    }
-
-                    Ok(user)
+                  match passwords_match {
+                    true => Ok(user),
+                    false => return Err("password mismatch".to_string())
+                  }
                 }
                 Err(e) => Err(e.to_string()),
             }
