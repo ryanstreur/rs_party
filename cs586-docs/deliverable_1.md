@@ -10,7 +10,7 @@ Users will be able to create accounts and log into those accounts. When a user l
 
 I'm planning on having a view called SessionUser which accepts a session key (UUID) and returns both the session information and user information.
 
-## Playing 20 Questions
+## Questions
 
 Since this is going to be a web application, I'm going to include queries which mutate the database as well as those which retrieve information:
 
