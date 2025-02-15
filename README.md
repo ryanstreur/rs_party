@@ -14,3 +14,9 @@ Project for Winter Classes 2025.
 ## Useful Documentation Links
 
 - [rocket_db_pools](https://api.rocket.rs/master/rocket_db_pools)
+
+Documentation is built with
+
+- [pandoc](https://pandoc.org/)
+- [kramdown-rfc](https://github.com/cabo/kramdown-rfc)
+- [xml2rfc](https://github.com/ietf-tools/xml2rfc)
