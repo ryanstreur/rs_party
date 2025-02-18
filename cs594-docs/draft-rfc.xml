@@ -14,7 +14,7 @@
 
 <rfc ipr="trust200902" category="info" submissionType="IETF">
   <front>
-    <title></title>
+    <title>RS_Party</title>
 
     <author initials="R." surname="Streur" fullname="Ryan Streur">
       <organization>PSU</organization>
@@ -48,8 +48,106 @@
 
 <?line 16?>
 
-<section anchor="introduction"><name>Introduction</name>
+<section anchor="api-anonymous-routes"><name>API: Anonymous Routes</name>
 
+<t>These routes are available for any Client, regardless of authentication status.</t>
+
+<section anchor="post-register"><name>POST /register</name>
+
+<t>The Client must supply the Server with a JSON body conforming to the following:</t>
+
+<t>{
+  "email": "string",
+  "name": "string",
+  "password": "string"
+}</t>
+
+<t>The Server must hash the user's password using a secure hashing method. It will then save the user's data to a new record in the postgresql database. It will then create a new session in the database and return a UUID corresponding to the session key.</t>
+
+<t>The Client may store the session key and use it in the Authorization HTTP header to make authenticated requests until the session expires.</t>
+
+</section>
+<section anchor="post-login"><name>POST /login</name>
+
+<t>The Client must supply the Server with a JSON body conforming to the following:</t>
+
+<t>{
+  "email": "string",
+  "password": "string"
+}</t>
+
+<t><list style="numbers" type="1">
+  <t>The Server will first attempt to retrieve a user with a matching email address.
+  <list style="symbols">
+      <t>If it fails to find one, it will return 400.</t>
+    </list></t>
+  <t>If it does find one, it will attempt to verify the password against the hash from the database.
+  <list style="symbols">
+      <t>If the verification fails it will return 400.</t>
+    </list></t>
+  <t>If the verification succeeds, the Server will check for an existing session and invalidate it if one exists.</t>
+  <t>It will then create a new session and return the UUID session key. The client may save the session key and include it in the header to make subsequent authenticated requests.</t>
+</list></t>
+
+</section>
+</section>
+<section anchor="api-authenticated-routes"><name>API: Authenticated Routes</name>
+
+<section anchor="event"><name>/event</name>
+
+<t>Each event has a name, a start datetime, an end datetime, and a place (string).</t>
+
+<section anchor="event-post"><name>/event POST</name>
+
+<t>Given new event data (listed above) in the JSON body, create a new event in the database and a new Role record listing the authenticated user as its owner.</t>
+
+</section>
+<section anchor="event-get"><name>/event GET</name>
+
+<t>For a logged-in user, retrieve a list of all the events they have access to.</t>
+
+</section>
+<section anchor="eventid-get"><name>/event/{id} GET</name>
+
+<t>If the user has access to the event specified by {id"}, return that event's information. Otherwise, or if the event does not exist, return 404.</t>
+
+</section>
+<section anchor="eventid-put"><name>/event/{id} PUT</name>
+
+<t>Given updated data about an existing event and a user who has the Owner or Organizer role, update the event data in the database and return the updated event.</t>
+
+</section>
+<section anchor="eventid-delete"><name>/event/{id} DELETE</name>
+
+<t>Given a user who is an Owner or Organizer of the event with {id}, delete the event and return 200 if it succeeds.</t>
+
+</section>
+</section>
+<section anchor="invitation"><name>/invitation</name>
+
+<t>Invitations have a guest_id corresponding to the invitee, an inviter_id corresponding to the inviter, an event_id which identifies the event the user is being invited to, and a response which stores the guest's RSVP information. They also include a role type, which is the role the user will be given for the event should they accept the invitation (guest, organizer, or owner).</t>
+
+<section anchor="invitation-post"><name>/invitation POST</name>
+
+<t>Given a user authorized to invite users to the event specified in the invitation information in the JSON body, create a new invitation in the system with the given information.</t>
+
+</section>
+<section anchor="invitation-get"><name>/invitation GET</name>
+
+<t>Return a list of the invitations created for the user with information about each event.</t>
+
+</section>
+<section anchor="invitationid-patch"><name>/invitation/{id} PATCH</name>
+
+<t>Given a user whose ID matches the invitation's guest_id, update the "response" field to the value included in the JSON body.</t>
+
+</section>
+<section anchor="invitationid-delete"><name>/invitation/{id} DELETE</name>
+
+<t>Given a user who is either the owner of the corresponding event or the creator of the invitation, delete the invitation. Otherwise return 401.</t>
+
+</section>
+</section>
 </section>
 <section anchor="acknowledgements"><name>Acknowledgements</name>
 
@@ -72,15 +170,41 @@
   </back>
 
 <!-- ##markdown-source:
-H4sIAAAAAAAAA01RPW/cMAzd9SsIdEgLVGfjtnrrkALZinxMRVHQEs8WThIN
-ij4n/7709YpkI/ke+R5J771rijX+wcyVBlBZyaVFrlHTY99/64+urWNJrSWu
-+rYY6+H++YdzAXWAVE/sNGm28t2dw1VnlsF5qFis9PiGFZ5UaBUHwDIN8PPp
-xTnvPeDYVDCoc89zalCoMERqQdJIDXQmCFzKWpMJmTQswsqBM5xYACHkRFW7
-RnIhy5cl/yducwozYM68NViNYNMYlmxW6GI9DWxjc35JSsAmJO8sy5LcaId/
-PkuKMZNzn+ChqnBcw66y59/DufKWKU5U9obbJpHDuuewYYMghErRFFKd4CxY
-Im/Vyyl8hdeSj9dg97OT7Reyk7ekM/zSfRi9Ylky/f48qy5t6LrJsHU82G26
-gCN3H0d2Y+axK9iUpLt1ti4KnnSHTc9PVEkweyUDzZkfUcj3/WEHKdpJ4qHE
-L+9LpHr9xUcZEFr4dp0Rw9n9BSL/mRVIAgAA
+H4sIAAAAAAAAA71XTW/cNhC961cMnEMcYD9cN5fuzUicxEVRG/a6l6IIKHF2
+lzAlKiTlzSbIf+/MUNql7E3SU28SNR+Pb94Mqel0WoSoGv1RWdfgAqLvsDCt
+l6cQz8/Ofjs7L0JX1iYE45q4a8nq6nL5rigqFRdgmpUroomWll/e3n28UT7u
+XhaqixvnF8UUGlXTp9udauAueux8AeD8egE3d/dFMZ1OQZUhelXFolhuTIAa
+awcaQ+VNiQHiBqFydd01hhISBGi9i65yFlbOg4LKGmziPKB/RHpvWzsYbjem
+2oCy1m0DdGRA0Ry0lqDgI/kEoJ3TDh5NRHCUyB+s6M343myWcNZGa4tF8QIu
+bq4WcNG4Zle7LsCt6yIGho8BwcsbKI+gHpWxqrSYoDY7eCNgJ+BxrTxFCwHc
+CpgtWh5wU0Vix1lfvICb67slzMnchIhecvRBoKYCQehowzth6S4xsDWRNg2/
+313/CaXTO2KPauRr06z7jREa5oQWFkXxlepxgjUBPVnACVWClk8mvMiVe7rW
+qhC2zutsvfiWUPXpBdVGhY1kYj5fBhjc6J1hKAhYdUQQ2/FCjSQXPYOrSPCt
+ZVeiQT1iHkSrqHgHChrcEoMVBzSNmLQuxLXH8MmKWakCPolWeVRU5uQcUNQ8
+eA8uogePsfMNGd7fX70l8jyFbV2jM/4G9wfczcYlUTuqnvP41Ewi0z7AxCHp
+hbSI+ZJq/mG5vIENKk0UUpZaPWAuC2RcnzoMJNqOluwoAX5uDaHMFWPd2jT/
+q1y+I41fZrDMs1E9VsYTFBUj1m3kJES5N9RrhINrPWCqVaxEHpIPlNa0yTAD
+ygYwhasVs7miT9KxK0MU0xCb8Krk6Sv5+uyMfM5n0HtoR+353DrDQ0jNKrG0
+V65aK9MQbF4Uea+8q0fqyYHxukQZejrBPIKs+HV21CF0VYWow2RcLHKuNlg9
+9BOFSk+DgTkatNCPNGWNZr2z3la80WRJGnn9XxojawROL62Qq15qWmWiH3r1
+qeZNU9lO57p/InI6WwIrmwId1/vsMHFH39PUBdH8XAZ1UVwqGvjyzDXiPdEM
+m/C8iXQucaUwGlkh5ghdvkAl5rOhQjhN8n0l/TQEl74qiveGXoSqtCpD6dTy
+dKYApXvEV8NG9y01GXOcHI+NnvT91tGB0Y8321eXTcf0SKMolhQdIdsG/Rjt
++8slUfNOTkiaBWvUU8rITpO83Ti+nEBJDcO5SI87YpBNSIWB+2sUfv7V6G99
+jl68gkdIHzwOASG0WJG0CXa5A/I9+TY5yEvFZEUj3sjokQaYwTWfyFsTqDq0
+DbPK4kkLNy4mUU8O/fT6CMyb+33dulYLeVI1qlYXRz2UgqdKpEG0cbInznzN
+JDOSa79WjflCL54qNemD5ug4+g+OFqGrRyIeR0C/vfzjcnk54M7gGL61HAPj
+coJkgnKgCV2lLI7gZUjofsfEmrgfN+kMmculSOpABd4/h14TsObO/Gj08eMx
+3ahSl6Vn/xNbnzqS4bFlurgZzWon1YQM/F5qxEOJHChF0BRw6OKUhThPceRA
+TjEEN+ns9u6vm7HYlqx4ZYPbTywl5QW+8U4GRClKWh+AyCQtKbZUisdypvuN
+66xO7cR90cbDptOYPxVIrPC+jiJ2aej9/MnM8yHUi0L19wihYLjN5vfYZz3Y
+SzMLm1Hxs+k18kojf0fDr06SE5IFXc7u833Q6CiK2+GmNUyhMarQJ9Z7Ug+X
+gxxw6mPcj/7n6fo5cLF88+F5R5FO6HCTu0avkoMjSWWQ+qjPTwaJndBFAq0e
+mKZjt8NBQfoZld9D9qNmRyM/JhzHpaZf9f9EeTelEvc0CW3OP2d0NAwOy9mo
+PUzSX9K5Wz00bmtRr7Hmk6H/R9Ou6mqZM+pQpXS3f/Cq1oR06lfVBD7X9lwe
+uDPZWA5iMpYq/h05GH5WdWvxn9NNjG1YzOdr+taVM/rrm1dU3Hkecl5aV85r
+xX9D894zzLVXq8ifKd90jUSTslO+zllCNi3pX2xKVy3+iJqHxazWrw6b6MuU
+pyEeWtf/95Wqeij+BXpi3CwqDwAA
 
 -->
 
