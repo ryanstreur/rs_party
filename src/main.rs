@@ -1,18 +1,26 @@
 //! Main module
+//!
 
-use rocket_db_pools::Database;
+use std::sync::Arc;
 
-use rs_party::db::AppDb;
-// use rs_party::fairings::RequestLoggerFairing;
-use rs_party::routes::{first_user, index, login, register};
+use axum::{routing::get, Router};
 
-#[macro_use]
-extern crate rocket;
+use rs_party::{
+    db::get_pool,
+    routes::{root_handler, AppState},
+};
 
-#[launch]
-fn rocket() -> _ {
-    rocket::build()
-        .attach(AppDb::init())
-        // .attach(RequestLoggerFairing)
-        .mount("/", routes![index, first_user, register, login])
+#[tokio::main]
+async fn main() {
+    let db = get_pool().await.expect("Could not connect to database");
+
+    let app_state = Arc::new(AppState { db });
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+
+    let app = Router::new()
+        .route("/", get(root_handler))
+        .with_state(app_state);
+
+    axum::serve(listener, app).await.unwrap();
 }

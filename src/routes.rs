@@ -1,6 +1,8 @@
+use axum::extract::State;
 use rocket::request::FromRequest;
 use rocket::response::status;
 use rocket::{get, Request};
+use std::sync::Arc;
 
 use rocket::http::Status;
 use rocket::request::Outcome;
@@ -8,6 +10,7 @@ use rocket::serde::json::Json;
 use rocket_db_pools::Connection;
 use sqlx::PgPool;
 
+use crate::db::get_pool;
 use crate::model::User;
 use crate::{db, db::AppDb, model, model::LoginParams};
 
@@ -109,10 +112,17 @@ pub async fn login(
 
     let user_result = db::login(db, &login_params).await;
 
-    // db::log_request(db, req);
-
     match user_result {
         Ok(session_id) => Ok(session_id),
         Err(err_str) => Err(err_str),
     }
+}
+
+pub struct AppState {
+    pub db: PgPool,
+}
+
+
+pub async fn root_handler(State(state): State<Arc<AppState>>) -> String {
+    "Hello World".to_string()
 }

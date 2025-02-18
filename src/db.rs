@@ -5,9 +5,9 @@ use rocket_db_pools::sqlx::PgPool;
 use rocket_db_pools::{Connection, Database};
 
 use rocket_db_pools::sqlx;
+use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
 
-use crate::fairings::TimeStart;
 use crate::model::{LoginParams, NewUserParams, RequestLogEntry, Session, User};
 
 const SESSION_EXPIRE_TIME: TimeDelta = TimeDelta::days(2);
@@ -17,7 +17,15 @@ const SESSION_EXPIRE_TIME: TimeDelta = TimeDelta::days(2);
 
 pub struct AppDb(PgPool);
 
-// TODO: write a test which iterates over the queries and tests that each of the files is present
+pub async fn get_pool() -> Result<PgPool, sqlx::Error> {
+    let db_connection_str = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost/rs_party".to_string());
+
+    PgPoolOptions::new()
+        .max_connections(10)
+        .connect(&db_connection_str)
+        .await
+}
 
 pub async fn get_first_user(mut db: Connection<AppDb>) -> Result<User, sqlx::Error> {
     sqlx::query_as::<_, User>(r#"SELECT * FROM rs_party.user LIMIT 1;"#)
@@ -46,7 +54,10 @@ pub async fn insert_user(
     ).bind(&new_user.email).bind(&new_user.name).bind(&hashed_password).fetch_one(&mut **db).await
 }
 
-pub async fn login(mut db: Connection<AppDb>, login_params: &LoginParams) -> Result<String, String> {
+pub async fn login(
+    mut db: Connection<AppDb>,
+    login_params: &LoginParams,
+) -> Result<String, String> {
     let user_res =
         sqlx::query_as::<_, User>(r#"SELECT * FROM rs_party.user as u WHERE email_address = $1;"#)
             .bind(&login_params.email_address)
@@ -58,12 +69,10 @@ pub async fn login(mut db: Connection<AppDb>, login_params: &LoginParams) -> Res
             let passwords_match_res = bcrypt::verify(&login_params.password, &user.password);
 
             match passwords_match_res {
-                Ok(passwords_match) => {
-                  match passwords_match {
+                Ok(passwords_match) => match passwords_match {
                     true => Ok(user),
-                    false => return Err("password mismatch".to_string())
-                  }
-                }
+                    false => return Err("password mismatch".to_string()),
+                },
                 Err(e) => Err(e.to_string()),
             }
         }
@@ -71,13 +80,13 @@ pub async fn login(mut db: Connection<AppDb>, login_params: &LoginParams) -> Res
     };
 
     let session_creation_result = match pw_matched_usr {
-      Ok(user)=> create_session(db, user).await,
-      Err(err) => Err(err)
+        Ok(user) => create_session(db, user).await,
+        Err(err) => Err(err),
     };
 
     match session_creation_result {
-      Ok(s) => Ok(s.session_key.to_string()),
-      Err(e) => Err(e.to_string())
+        Ok(s) => Ok(s.session_key.to_string()),
+        Err(e) => Err(e.to_string()),
     }
 }
 
@@ -111,8 +120,6 @@ pub async fn log_request<'a>(
     .bind(entry.req_url)
     .bind(entry.req_headers)
     .execute(&mut **db).await
-
-    
 }
 
 pub async fn create_session(mut db: Connection<AppDb>, user: User) -> Result<Session, String> {
@@ -139,8 +146,8 @@ RETURNING *;
     .fetch_one(&mut **db)
     .await;
 
-  match query_result {
-    Ok(r) => Ok(r),
-    Err(e) => Err(e.to_string())
-  }
+    match query_result {
+        Ok(r) => Ok(r),
+        Err(e) => Err(e.to_string()),
+    }
 }
