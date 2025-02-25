@@ -1,22 +1,16 @@
 extern crate bcrypt;
-use chrono::{Date, DateTime, TimeDelta, Utc};
-use rocket::Request;
-use rocket_db_pools::sqlx::PgPool;
-use rocket_db_pools::{Connection, Database};
+use chrono::Utc;
+use sqlx::PgPool;
 
-use rocket_db_pools::sqlx;
-use sqlx::postgres::PgPoolOptions;
+use sqlx;
+use sqlx::pool::PoolConnection;
+use sqlx::postgres::{PgPoolOptions, PgQueryResult};
+use sqlx::Postgres;
 use uuid::Uuid;
 
-use crate::model::{LoginParams, NewUserParams, RequestLogEntry, Session, User};
+use crate::model::{self, LoginParams, NewUserParams, RequestLogEntry, Session, User};
 
-const SESSION_EXPIRE_TIME: TimeDelta = TimeDelta::days(2);
-
-#[derive(Database)]
-#[database("rs_party")] // Maps to key under 'default.databases' in Rocket.toml
-
-pub struct AppDb(PgPool);
-
+/// Create and return a database pool connection
 pub async fn get_pool() -> Result<PgPool, sqlx::Error> {
     let db_connection_str = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost/rs_party".to_string());
@@ -27,20 +21,23 @@ pub async fn get_pool() -> Result<PgPool, sqlx::Error> {
         .await
 }
 
-pub async fn get_first_user(mut db: Connection<AppDb>) -> Result<User, sqlx::Error> {
+/// Get first user in the database. Probably "Admin"
+pub async fn get_first_user(conn: &mut PoolConnection<Postgres>) -> Result<User, sqlx::Error> {
     sqlx::query_as::<_, User>(r#"SELECT * FROM rs_party.user LIMIT 1;"#)
-        .fetch_one(&mut **db)
+        .fetch_one(&mut **conn)
         .await
 }
 
-pub async fn get_all_users(mut db: Connection<AppDb>) -> Result<Vec<User>, sqlx::Error> {
+/// Get all users from the database
+pub async fn get_all_users(conn: &mut PoolConnection<Postgres>) -> Result<Vec<User>, sqlx::Error> {
     sqlx::query_as::<_, User>(r#"SELECT * FROM rs_party.user"#)
-        .fetch_all(&mut **db)
+        .fetch_all(&mut **conn)
         .await
 }
 
+/// Insert a new user into the database
 pub async fn insert_user(
-    mut db: Connection<AppDb>,
+    mut conn: PoolConnection<Postgres>,
     new_user: &NewUserParams,
 ) -> Result<User, sqlx::Error> {
     // Create a secure hash with the password
@@ -51,17 +48,18 @@ pub async fn insert_user(
     };
 
     sqlx::query_as::<_, User>(r#"INSERT INTO rs_party.user (email_address, name, password) VALUES ( $1, $2, $3 ) RETURNING id, email_address, name, is_superuser;"#
-    ).bind(&new_user.email).bind(&new_user.name).bind(&hashed_password).fetch_one(&mut **db).await
+    ).bind(&new_user.email).bind(&new_user.name).bind(&hashed_password).fetch_one(&mut *conn).await
 }
 
+/// Take a set of login parameters; create new session; return session ID
 pub async fn login(
-    mut db: Connection<AppDb>,
+    mut conn: PoolConnection<Postgres>,
     login_params: &LoginParams,
 ) -> Result<String, String> {
     let user_res =
         sqlx::query_as::<_, User>(r#"SELECT * FROM rs_party.user as u WHERE email_address = $1;"#)
             .bind(&login_params.email_address)
-            .fetch_one(&mut **db)
+            .fetch_one(&mut *conn)
             .await;
 
     let pw_matched_usr = match user_res {
@@ -80,7 +78,7 @@ pub async fn login(
     };
 
     let session_creation_result = match pw_matched_usr {
-        Ok(user) => create_session(db, user).await,
+        Ok(user) => create_session(&mut conn, user).await,
         Err(err) => Err(err),
     };
 
@@ -90,39 +88,10 @@ pub async fn login(
     }
 }
 
-pub async fn log_request<'a>(
-    mut db: Connection<AppDb>,
-    req: &Request<'a>,
-) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
-    let time_received_opt = req.local_cache(|| crate::fairings::TimeStart(None)).0;
-
-    let entry = RequestLogEntry {
-        time_received: match time_received_opt {
-            Some(time) => time,
-            None => Utc::now(),
-        },
-        time_logged: Utc::now(),
-        method: req.method().to_string(),
-        req_url: req.uri().to_string(),
-        req_headers: req
-            .headers()
-            .iter()
-            .map(|h| format!("{}: {}", h.name(), h.value()))
-            .collect::<Vec<String>>()
-            .join(", "),
-    };
-
-    sqlx::query(
-        r#"INSERT INTO rs_party.request_log (time_received, time_logged, method, req_url, req_headers) VALUES ($1, $2, $3, $4, $5);"#,
-    ).bind(entry.time_received)
-    .bind(entry.time_logged)
-    .bind(entry.method)
-    .bind(entry.req_url)
-    .bind(entry.req_headers)
-    .execute(&mut **db).await
-}
-
-pub async fn create_session(mut db: Connection<AppDb>, user: User) -> Result<Session, String> {
+pub async fn create_session(
+    conn: &mut PoolConnection<Postgres>,
+    user: User,
+) -> Result<Session, String> {
     let session = Session {
         session_key: Uuid::new_v4(),
         user_id: user.id,
@@ -143,7 +112,7 @@ RETURNING *;
     .bind(session.session_data)
     .bind(session.created)
     .bind(session.updated)
-    .fetch_one(&mut **db)
+    .fetch_one(&mut **conn)
     .await;
 
     match query_result {
@@ -151,3 +120,54 @@ RETURNING *;
         Err(e) => Err(e.to_string()),
     }
 }
+
+pub async fn insert_log_entry(
+    logging_conn: &mut PoolConnection<Postgres>,
+    entry: RequestLogEntry,
+) -> Result<PgQueryResult, sqlx::Error> {
+    sqlx::query(
+        r#"
+INSERT INTO rs_party.request_log (time_received, time_logged, method, req_url, req_headers)
+VALUES ($1, $2, $3, $4, $5);
+"#,
+    )
+    .bind(entry.time_received)
+    .bind(entry.time_logged)
+    .bind(entry.req_url)
+    .bind(entry.req_headers)
+    .execute(&mut **logging_conn)
+    .await
+}
+
+pub async fn insert_event(
+    conn: &mut PoolConnection<Postgres>,
+    new_event: model::Event,
+) -> Result<model::Event, sqlx::Error> {
+    sqlx::query_as::<_, model::Event>(
+        r#"
+  INSERT INTO rs_party.event
+  (start_date, end_date, start_time, end_time, place)
+  VALUES ($1, $2, $3, $4, $5)
+  RETURNING *;
+  "#,
+    )
+    .bind(new_event.start_date)
+    .bind(new_event.end_date)
+    .bind(new_event.start_time)
+    .bind(new_event.end_time)
+    .bind(new_event.place)
+    .fetch_one(&mut **conn)
+    .await
+}
+
+pub async fn get_event(
+    conn: &mut PoolConnection<Postgres>,
+    event_id: &i64,
+) -> Result<model::Event, sqlx::Error> {
+    sqlx::query_as::<_, model::Event>(r#" SELECT * FROM rs_party.event e WHERE e.id = $1; "#)
+        .bind(event_id)
+        .fetch_one(&mut **conn)
+        .await
+}
+
+

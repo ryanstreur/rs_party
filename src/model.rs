@@ -1,8 +1,8 @@
 //! Data model for party planner application
 
-use chrono::{DateTime, TimeDelta, Utc};
-use rocket::serde::{Deserialize, Serialize};
-use sqlx::{prelude::FromRow, Decode};
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::prelude::FromRow;
 
 // enum PartyRole {
 //   Guest,
@@ -19,7 +19,6 @@ use sqlx::{prelude::FromRow, Decode};
 
 /// A struct for representing users in memory
 #[derive(Serialize, Default, Debug, FromRow)]
-#[serde(crate = "rocket::serde")]
 pub struct User {
     pub id: i64,
     pub email_address: String,
@@ -30,28 +29,26 @@ pub struct User {
 }
 
 #[derive(Deserialize, Debug, FromRow)]
-#[serde(crate = "rocket::serde")]
 pub struct NewUserParams {
     pub email: String,
     pub name: String,
     pub password: String,
 }
 
-#[derive(Serialize, rocket::serde::Deserialize, Debug)]
-#[serde(crate = "rocket::serde")]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct LoginParams {
     pub email_address: String,
     pub password: String,
 }
 
 #[derive(Serialize, Debug)]
-#[serde(crate = "rocket::serde")]
 pub struct LoginResponse {}
 
 #[derive(Debug)]
 pub struct RequestLogEntry {
-    pub time_received: DateTime<Utc>,
-    pub time_logged: DateTime<Utc>,
+    pub id: Option<u64>,
+    pub time_received: String,
+    pub time_logged: String,
     pub method: String,
     pub req_url: String,
     pub req_headers: String,
@@ -66,8 +63,18 @@ pub struct Session {
     pub updated: DateTime<Utc>,
 }
 
+#[derive(FromRow)]
+pub struct Event {
+  pub id: Option<i64>,
+  pub start_date: NaiveDate,
+  pub end_date: NaiveDate,
+  pub start_time: Option<NaiveTime>,
+  pub end_time: Option<NaiveTime>,
+  pub place: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct ApiError {
-  pub status_code: i32,
-  pub error: String,
+    pub status_code: i32,
+    pub error: String,
 }
