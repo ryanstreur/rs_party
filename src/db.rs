@@ -141,7 +141,7 @@ VALUES ($1, $2, $3, $4, $5);
 
 pub async fn insert_event(
     conn: &mut PoolConnection<Postgres>,
-    new_event: model::Event,
+    new_event: &model::Event,
 ) -> Result<model::Event, sqlx::Error> {
     sqlx::query_as::<_, model::Event>(
         r#"
@@ -155,7 +155,7 @@ pub async fn insert_event(
     .bind(new_event.end_date)
     .bind(new_event.start_time)
     .bind(new_event.end_time)
-    .bind(new_event.place)
+    .bind(new_event.place.clone())
     .fetch_one(&mut **conn)
     .await
 }
@@ -164,10 +164,88 @@ pub async fn get_event(
     conn: &mut PoolConnection<Postgres>,
     event_id: &i64,
 ) -> Result<model::Event, sqlx::Error> {
-    sqlx::query_as::<_, model::Event>(r#" SELECT * FROM rs_party.event e WHERE e.id = $1; "#)
+    sqlx::query_as::<_, model::Event>(r#" SELECT * FROM rs_party.event e WHERE e.id = $1;"#)
         .bind(event_id)
         .fetch_one(&mut **conn)
         .await
 }
 
+pub async fn update_event(
+    conn: &mut PoolConnection<Postgres>,
+    event: &model::Event,
+) -> Result<model::Event, sqlx::Error> {
+    sqlx::query_as::<_, model::Event>(
+        r#"
+  UPDATE rs_party.event SET (start_date, end_date, start_time, end_time, place) 
+  = ($1, $2, $3, $4, $5)
+  WHERE id = $6
+  RETURNING *;
+  "#,
+    )
+    .bind(event.start_date)
+    .bind(event.end_date)
+    .bind(event.start_time)
+    .bind(event.end_time)
+    .bind(event.place.clone())
+    .bind(event.id)
+    .fetch_one(&mut **conn)
+    .await
+}
 
+pub async fn delete_event(
+    conn: &mut PoolConnection<Postgres>,
+    event_id: &i64,
+) -> Result<PgQueryResult, sqlx::Error> {
+    sqlx::query(r#"DELETE FROM rs_party.event e WHERE e.id = $1;"#)
+        .bind(event_id)
+        .execute(&mut **conn)
+        .await
+}
+
+#[cfg(test)]
+mod tests {
+
+    use chrono::NaiveDate;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_event_crud() {
+        let pool = get_pool().await.expect("Couldn't get db pool");
+        let mut conn = pool.acquire().await.expect("Couldn't get db connection");
+
+        let e = model::Event {
+            id: None,
+            start_date: NaiveDate::from_ymd_opt(2025, 02, 25).expect("bad date"),
+            end_date: NaiveDate::from_ymd_opt(2025, 02, 25).expect("bad date"),
+            start_time: None,
+            end_time: None,
+            place: "Somewhere good".to_string(),
+        };
+
+        let mut out_e = insert_event(&mut conn, &e)
+            .await
+            .expect("could not insert event");
+
+        assert_eq!(e.start_date, out_e.start_date);
+        assert_ne!(out_e.id, None);
+
+        out_e.place += " - no, someplace better!";
+
+        let updated_e = update_event(&mut conn, &out_e).await.expect("Failed to update event");
+
+        assert_eq!(updated_e.id, out_e.id);
+        assert_eq!(updated_e.place, out_e.place);
+        assert_ne!(updated_e.place, e.place);
+
+        let event_id = out_e.id.expect("no output ID");
+        let _delete_result = delete_event(&mut conn, &event_id).await;
+        let get_result = get_event(&mut conn, &event_id).await;
+
+        match get_result {
+          Ok(_) => assert!(false),
+          Err(err) => println!("{}", err)
+        }
+    }
+
+}
