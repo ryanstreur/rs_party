@@ -20,10 +20,10 @@ use sqlx::prelude::FromRow;
 /// A struct for representing users in memory
 #[derive(Serialize, Default, Debug, FromRow)]
 pub struct User {
-    pub id: i64,
+    pub id: Option<i64>,
     pub email_address: String,
     pub name: String,
-    pub password: String,
+    pub password: Option<String>,
     pub is_superuser: bool,
     // TODO: Add created, updated, and last-logged-in times
 }
@@ -65,12 +65,20 @@ pub struct Session {
 
 #[derive(FromRow)]
 pub struct Event {
-  pub id: Option<i64>,
-  pub start_date: NaiveDate,
-  pub end_date: NaiveDate,
-  pub start_time: Option<NaiveTime>,
-  pub end_time: Option<NaiveTime>,
-  pub place: String,
+    pub id: Option<i64>,
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
+    pub start_time: Option<NaiveTime>,
+    pub end_time: Option<NaiveTime>,
+    pub place: String,
+}
+
+#[derive(FromRow)]
+pub struct Role {
+    pub id: Option<i64>,
+    pub role_type: String,
+    pub user_id: i64,
+    pub event_id: i64,
 }
 
 #[derive(Debug, Clone)]

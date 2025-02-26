@@ -37,7 +37,7 @@ pub async fn get_all_users(conn: &mut PoolConnection<Postgres>) -> Result<Vec<Us
 
 /// Insert a new user into the database
 pub async fn insert_user(
-    mut conn: PoolConnection<Postgres>,
+    conn: &mut PoolConnection<Postgres>,
     new_user: &NewUserParams,
 ) -> Result<User, sqlx::Error> {
     // Create a secure hash with the password
@@ -47,8 +47,66 @@ pub async fn insert_user(
         Err(_) => "Garbage".to_string(),
     };
 
-    sqlx::query_as::<_, User>(r#"INSERT INTO rs_party.user (email_address, name, password) VALUES ( $1, $2, $3 ) RETURNING id, email_address, name, is_superuser;"#
-    ).bind(&new_user.email).bind(&new_user.name).bind(&hashed_password).fetch_one(&mut *conn).await
+    sqlx::query_as::<_, User>(
+        r#"
+    INSERT INTO rs_party.user
+    (email_address, name, password)
+    VALUES ( $1, $2, $3 )
+    RETURNING id, email_address, name, is_superuser, password;
+    "#,
+    )
+    .bind(&new_user.email)
+    .bind(&new_user.name)
+    .bind(&hashed_password)
+    .fetch_one(&mut **conn)
+    .await
+}
+
+pub async fn get_user(
+    conn: &mut PoolConnection<Postgres>,
+    user_id: &i64,
+) -> Result<model::User, sqlx::Error> {
+    sqlx::query_as::<_, model::User>(
+        r#"
+    SELECT id, name, email_address, is_superuser, email_confirmed, password
+    FROM rs_party.user u 
+    WHERE u.id = $1;
+    "#,
+    )
+    .bind(&user_id)
+    .fetch_one(&mut **conn)
+    .await
+}
+
+pub async fn update_user(
+    conn: &mut PoolConnection<Postgres>,
+    user: &model::User,
+) -> Result<model::User, sqlx::Error> {
+    sqlx::query_as::<_, model::User>(
+        r#"
+  UPDATE rs_party.user SET 
+  (name, email_address, password, is_superuser)
+  VALUES ($1, $2, $3, $4)
+  WHERE id = $5
+  RETURNING *;
+  "#,
+    )
+    .bind(&user.name)
+    .bind(&user.email_address)
+    .bind(&user.password)
+    .bind(&user.is_superuser)
+    .fetch_one(&mut **conn)
+    .await
+}
+
+pub async fn delete_user(
+    conn: &mut PoolConnection<Postgres>,
+    user_id: &i64,
+) -> Result<PgQueryResult, sqlx::Error> {
+    sqlx::query(r#"DELETE FROM rs_party.user u WHERE u.id = $1;"#)
+        .bind(user_id)
+        .execute(&mut **conn)
+        .await
 }
 
 /// Take a set of login parameters; create new session; return session ID
@@ -64,7 +122,12 @@ pub async fn login(
 
     let pw_matched_usr = match user_res {
         Ok(user) => {
-            let passwords_match_res = bcrypt::verify(&login_params.password, &user.password);
+            let password = match &user.password {
+                Some(p) => p,
+                None => return Err("User has no password.".to_string()),
+            };
+
+            let passwords_match_res = bcrypt::verify(&login_params.password, &password);
 
             match passwords_match_res {
                 Ok(passwords_match) => match passwords_match {
@@ -88,13 +151,19 @@ pub async fn login(
     }
 }
 
+/// Create new session in database
 pub async fn create_session(
     conn: &mut PoolConnection<Postgres>,
     user: User,
 ) -> Result<Session, String> {
+    let user_id = match user.id {
+        Some(id) => id,
+        None => return Err("No user Id".to_string()),
+    };
+
     let session = Session {
         session_key: Uuid::new_v4(),
-        user_id: user.id,
+        user_id,
         session_data: "".to_string(),
         created: Utc::now(),
         updated: Utc::now(),
@@ -202,6 +271,67 @@ pub async fn delete_event(
         .await
 }
 
+pub async fn insert_role(
+    conn: &mut PoolConnection<Postgres>,
+    new_role: &model::Role,
+) -> Result<model::Role, sqlx::Error> {
+    sqlx::query_as::<_, model::Role>(
+        r#"
+  INSERT INTO rs_party.role
+  (role_type, user_id, event_id)
+  VALUES ($1, $2, $3)
+  RETURNING *;
+  "#,
+    )
+    .bind(new_role.role_type.clone())
+    .bind(new_role.user_id)
+    .bind(new_role.event_id)
+    .fetch_one(&mut **conn)
+    .await
+}
+
+pub async fn get_role(
+    conn: &mut PoolConnection<Postgres>,
+    role_id: &i64,
+) -> Result<model::Role, sqlx::Error> {
+    sqlx::query_as::<_, model::Role>(r#" SELECT * FROM rs_party.role e WHERE e.id = $1;"#)
+        .bind(role_id)
+        .fetch_one(&mut **conn)
+        .await
+}
+
+pub async fn update_role(
+    conn: &mut PoolConnection<Postgres>,
+    role: &model::Role,
+) -> Result<model::Role, sqlx::Error> {
+    sqlx::query_as::<_, model::Role>(
+        r#"
+  UPDATE rs_party.role SET 
+  (role_type, user_id, event_id)
+  VALUES ($1, $2, $3)
+
+  WHERE id = $6
+  RETURNING *;
+  "#,
+    )
+    .bind(role.role_type.clone())
+    .bind(role.user_id)
+    .bind(role.event_id)
+    .bind(role.id)
+    .fetch_one(&mut **conn)
+    .await
+}
+
+pub async fn delete_role(
+    conn: &mut PoolConnection<Postgres>,
+    role_id: &i64,
+) -> Result<PgQueryResult, sqlx::Error> {
+    sqlx::query(r#"DELETE FROM rs_party.role e WHERE e.id = $1;"#)
+        .bind(role_id)
+        .execute(&mut **conn)
+        .await
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -209,6 +339,7 @@ mod tests {
 
     use super::*;
 
+    /// Test create/read/update/delete for events
     #[tokio::test]
     async fn test_event_crud() {
         let pool = get_pool().await.expect("Couldn't get db pool");
@@ -232,7 +363,9 @@ mod tests {
 
         out_e.place += " - no, someplace better!";
 
-        let updated_e = update_event(&mut conn, &out_e).await.expect("Failed to update event");
+        let updated_e = update_event(&mut conn, &out_e)
+            .await
+            .expect("Failed to update event");
 
         assert_eq!(updated_e.id, out_e.id);
         assert_eq!(updated_e.place, out_e.place);
@@ -243,9 +376,31 @@ mod tests {
         let get_result = get_event(&mut conn, &event_id).await;
 
         match get_result {
-          Ok(_) => assert!(false),
-          Err(err) => println!("{}", err)
+            Ok(_) => assert!(false),
+            Err(err) => println!("{}", err),
         }
     }
 
+    #[tokio::test]
+    pub async fn test_role_crud() {
+        let pool = get_pool().await.expect("Couldn't get db pool");
+        let mut conn = pool.acquire().await.expect("Couldn't get db connection");
+
+        let u = NewUserParams {
+            name: "Test User".to_string(),
+            password: "password not yet hashed".to_string(),
+            email: "test@example.com".to_string(),
+        };
+
+        let saved_user = insert_user(&mut conn, &u)
+            .await
+            .expect("couldn't insert user");
+
+        // 2/25/2025 spent all night tonight trying to figure out why I was getting a "column not found" error from sqlx. I thought (without evidence) that if I just made something an Option type in a struct which derived "FromRow" that it would gracefully handle result sets which did not contain a column corresponding to the Optioned field. Boy was I wrong.
+
+        let user_id = saved_user.id.expect("saved user should have an ID");
+
+        let _deletion_response = delete_user(&mut conn, &user_id).await.expect("should be able to delete");
+
+    }
 }

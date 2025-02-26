@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::{Utc};
+use chrono::Utc;
 
 use tracing::{event, info_span, Level, Span};
 
@@ -16,11 +16,16 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use tower_http::{classify::ServerErrorsFailureClass, trace::{DefaultOnRequest, TraceLayer}};
+use tower_http::{
+    classify::ServerErrorsFailureClass,
+    trace::{DefaultOnRequest, TraceLayer},
+};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use rs_party::{
-    db::get_pool, model::RequestLogEntry, routes::{login_handler, root_handler, AppState}
+    db::get_pool,
+    model::RequestLogEntry,
+    routes::{login_handler, root_handler, AppState},
 };
 
 #[tokio::main]
@@ -71,40 +76,38 @@ async fn main() {
                     // You can use `_span.record("some_other_field", value)` in one of these
                     // closures to attach a value to the initially empty field in the info_span
                     // created above.
-                    DefaultOnRequest::new().level(Level::INFO)
+                    DefaultOnRequest::new().level(Level::INFO),
                 )
                 .on_response(|_response: &Response, _latency: Duration, _span: &Span| {
-                  _span.record("time_responded", Utc::now().to_string());
+                    _span.record("time_responded", Utc::now().to_string());
 
-                  let time_logged_str = match _span.field("time_received") {
-                    Some(field) => field.to_string(),
-                    None => "".to_string()
-                  };
+                    let time_logged_str = match _span.field("time_received") {
+                        Some(field) => field.to_string(),
+                        None => "".to_string(),
+                    };
 
-                  let method_str = match _span.field("method") {
-                    Some(method_field) => method_field.to_string(),
-                    None => "".to_string()
-                  };
+                    let method_str = match _span.field("method") {
+                        Some(method_field) => method_field.to_string(),
+                        None => "".to_string(),
+                    };
 
-                  let path_str = match _span.field("matched_path") {
-                    Some(path_field) => path_field.to_string(),
-                    None => "/".to_string()
-                  };
+                    let path_str = match _span.field("matched_path") {
+                        Some(path_field) => path_field.to_string(),
+                        None => "/".to_string(),
+                    };
 
-                  let _entry = RequestLogEntry {
-                    id: None,
-                    time_received: time_logged_str,
-                    time_logged: Utc::now().to_string(),
-                    method: method_str,
-                    req_headers: "".to_string(),
-                    req_url: path_str
-                  };
+                    let _entry = RequestLogEntry {
+                        id: None,
+                        time_received: time_logged_str,
+                        time_logged: Utc::now().to_string(),
+                        method: method_str,
+                        req_headers: "".to_string(),
+                        req_url: path_str,
+                    };
 
+                    // db::insert_log_entry(&mut log_conn, entry);
 
-                  // db::insert_log_entry(&mut log_conn, entry);
-                  
-
-                  event!(parent: _span, Level::INFO, "finished processing request")
+                    event!(parent: _span, Level::INFO, "finished processing request")
                     // ...
                 })
                 .on_body_chunk(|_chunk: &Bytes, _latency: Duration, _span: &Span| {

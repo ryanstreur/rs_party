@@ -1,6 +1,6 @@
+use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{extract, Json};
-use axum::extract::State;
 use std::sync::Arc;
 
 use sqlx::PgPool;
@@ -19,18 +19,18 @@ pub async fn root_handler() -> String {
 pub async fn registration_handler(
     State(state): State<Arc<AppState>>,
     extract::Json(new_user_params): extract::Json<NewUserParams>,
-) -> Result<axum::Json<User>, StatusCode>{
-    let conn = state
+) -> Result<axum::Json<User>, StatusCode> {
+    let mut conn = state
         .db
         .acquire()
         .await
         .expect("could not get db connection");
 
-    let user_result = db::insert_user(conn, &new_user_params).await;
+    let user_result = db::insert_user(&mut conn, &new_user_params).await;
 
     match user_result {
-      Ok(user) => Ok(Json(user)),
-      Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)
+        Ok(user) => Ok(Json(user)),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }
 
