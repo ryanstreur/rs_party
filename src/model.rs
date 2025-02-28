@@ -1,5 +1,10 @@
 //! Data model for party planner application
 
+use axum::{
+    body::Body,
+    http::{Response, StatusCode},
+    response::IntoResponse,
+};
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
@@ -63,7 +68,7 @@ pub struct Session {
     pub updated: DateTime<Utc>,
 }
 
-#[derive(FromRow)]
+#[derive(FromRow, Default)]
 pub struct Event {
     pub id: Option<i64>,
     pub start_date: NaiveDate,
@@ -73,16 +78,70 @@ pub struct Event {
     pub place: String,
 }
 
-#[derive(FromRow)]
+// https://stackoverflow.com/questions/76465657/how-do-i-create-custom-postgres-enum-types-in-rust-sqlx
+// I was having a lot of trouble here because I wanted to define the role_type in postgres within the rs_party schema.
+// It did not work and said the types were incompatible. However, when I refreshed the database having removed role_type
+// from the schema, everything seemed to work just fine. This may be an issue with sqlx.
+// TODO: Reproduce in controlled environment, write up coherent issue for sqlx
+#[derive(Clone, Debug, sqlx::Type, Default)]
+#[sqlx(type_name = "role_type", rename_all = "lowercase")]
+pub enum RoleType {
+    Owner,
+    Organizer,
+    #[default]
+    Guest,
+}
+
+impl From<RoleType> for String {
+    fn from(val: RoleType) -> Self {
+        match val {
+            RoleType::Owner => String::from("owner"),
+            RoleType::Guest => String::from("guest"),
+            RoleType::Organizer => String::from("organizer"),
+        }
+    }
+}
+
+#[derive(FromRow, Default)]
 pub struct Role {
     pub id: Option<i64>,
-    pub role_type: String,
+    pub role_type: RoleType,
     pub user_id: i64,
     pub event_id: i64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ApiError {
-    pub status_code: i32,
-    pub error: String,
+    pub status_code: StatusCode,
+    pub message: Option<String>,
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response<Body> {
+        (self.status_code, self.message.unwrap_or_default()).into_response()
+    }
+}
+
+impl From<sqlx::Error> for ApiError {
+    fn from(value: sqlx::Error) -> Self {
+        match value {
+            sqlx::Error::RowNotFound => ApiError {
+                status_code: StatusCode::NOT_FOUND,
+                ..Default::default()
+            },
+            _ => ApiError {
+                status_code: StatusCode::INTERNAL_SERVER_ERROR,
+                message: Some("Unhandled Database error".to_string()),
+            },
+        }
+    }
+}
+
+impl ApiError {
+    pub fn internal(msg: &str) -> ApiError {
+        ApiError {
+            status_code: StatusCode::INTERNAL_SERVER_ERROR,
+            message: Some(msg.to_string()),
+        }
+    }
 }

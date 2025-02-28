@@ -8,7 +8,7 @@ CREATE TYPE rs_party.response_type AS ENUM(
   , 'pending'
 );
 
-CREATE TYPE rs_party.role_type AS ENUM(
+CREATE TYPE role_type AS ENUM(
   'owner'
   , 'organizer'
   , 'guest'
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS rs_party.invitation (
 -- User roles for authorization of actions in the app
 CREATE TABLE IF NOT EXISTS rs_party.role (
   id bigint GENERATED ALWAYS AS IDENTITY
-  , role_type rs_party.role_type
+  , role_type role_type
   , user_id bigint
   , event_id bigint
   , CONSTRAINT role_user_fk FOREIGN KEY (user_id) REFERENCES rs_party.user (id)

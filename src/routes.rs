@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use sqlx::PgPool;
 
-use crate::model::{NewUserParams, User};
+use crate::model::{ApiError, NewUserParams, User};
 use crate::{db, model::LoginParams};
 
 pub struct AppState {
@@ -37,12 +37,19 @@ pub async fn registration_handler(
 pub async fn login_handler(
     State(state): State<Arc<AppState>>,
     extract::Json(login_params): extract::Json<LoginParams>,
-) -> Result<String, String> {
-    let conn = state
+) -> Result<String, ApiError> {
+    let conn_result = state
         .db
         .acquire()
-        .await
-        .expect("could not get db connection");
+        .await;
+
+    let conn = match conn_result {
+      Ok(c) => c,
+      Err(e) => return Err(ApiError {
+        status_code: StatusCode::INTERNAL_SERVER_ERROR,
+        message: Some(e.to_string())
+      })
+    };
 
     let user_result = db::login(conn, &login_params).await;
     match user_result {

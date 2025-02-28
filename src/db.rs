@@ -1,4 +1,5 @@
 extern crate bcrypt;
+use axum::http::StatusCode;
 use chrono::Utc;
 use sqlx::PgPool;
 
@@ -8,7 +9,7 @@ use sqlx::postgres::{PgPoolOptions, PgQueryResult};
 use sqlx::Postgres;
 use uuid::Uuid;
 
-use crate::model::{self, LoginParams, NewUserParams, RequestLogEntry, Session, User};
+use crate::model::{self, ApiError, LoginParams, NewUserParams, RequestLogEntry, Session, User};
 
 /// Create and return a database pool connection
 pub async fn get_pool() -> Result<PgPool, sqlx::Error> {
@@ -73,7 +74,7 @@ pub async fn get_user(
     WHERE u.id = $1;
     "#,
     )
-    .bind(&user_id)
+    .bind(user_id)
     .fetch_one(&mut **conn)
     .await
 }
@@ -94,7 +95,7 @@ pub async fn update_user(
     .bind(&user.name)
     .bind(&user.email_address)
     .bind(&user.password)
-    .bind(&user.is_superuser)
+    .bind(user.is_superuser)
     .fetch_one(&mut **conn)
     .await
 }
@@ -113,41 +114,46 @@ pub async fn delete_user(
 pub async fn login(
     mut conn: PoolConnection<Postgres>,
     login_params: &LoginParams,
-) -> Result<String, String> {
+) -> Result<String, ApiError> {
     let user_res =
         sqlx::query_as::<_, User>(r#"SELECT * FROM rs_party.user as u WHERE email_address = $1;"#)
             .bind(&login_params.email_address)
             .fetch_one(&mut *conn)
             .await;
 
-    let pw_matched_usr = match user_res {
-        Ok(user) => {
-            let password = match &user.password {
-                Some(p) => p,
-                None => return Err("User has no password.".to_string()),
-            };
-
-            let passwords_match_res = bcrypt::verify(&login_params.password, &password);
-
-            match passwords_match_res {
-                Ok(passwords_match) => match passwords_match {
-                    true => Ok(user),
-                    false => return Err("password mismatch".to_string()),
-                },
-                Err(e) => Err(e.to_string()),
-            }
-        }
-        Err(error) => Err(error.to_string()),
+    let user = match user_res {
+        Ok(u) => u,
+        Err(e) => return Err(ApiError::from(e)),
     };
 
-    let session_creation_result = match pw_matched_usr {
+    let password = match &user.password {
+        Some(p) => p,
+        None => return Err(ApiError::internal("User has no password")),
+    };
+
+    let passwords_match_res = bcrypt::verify(&login_params.password, password);
+
+    let pw_matched_user = match passwords_match_res {
+        Ok(passwords_match) => match passwords_match {
+            true => Ok(user),
+            false => return Err(ApiError::internal("password mismatch")),
+        },
+        Err(e) => {
+            return Err(ApiError {
+                status_code: StatusCode::INTERNAL_SERVER_ERROR,
+                message: Some(e.to_string()),
+            })
+        }
+    };
+
+    let session_creation_result = match pw_matched_user {
         Ok(user) => create_session(&mut conn, user).await,
-        Err(err) => Err(err),
+        Err(err) => return Err(ApiError::internal(err)),
     };
 
     match session_creation_result {
         Ok(s) => Ok(s.session_key.to_string()),
-        Err(e) => Err(e.to_string()),
+        Err(e) => Err(e),
     }
 }
 
@@ -155,10 +161,15 @@ pub async fn login(
 pub async fn create_session(
     conn: &mut PoolConnection<Postgres>,
     user: User,
-) -> Result<Session, String> {
+) -> Result<Session, ApiError> {
     let user_id = match user.id {
         Some(id) => id,
-        None => return Err("No user Id".to_string()),
+        None => {
+            return Err(ApiError {
+                status_code: StatusCode::INTERNAL_SERVER_ERROR,
+                message: Some("Tried to create session using id-less user".to_string()),
+            })
+        }
     };
 
     let session = Session {
@@ -186,7 +197,7 @@ RETURNING *;
 
     match query_result {
         Ok(r) => Ok(r),
-        Err(e) => Err(e.to_string()),
+        Err(e) => Err(ApiError::from(e)),
     }
 }
 
@@ -304,6 +315,7 @@ pub async fn update_role(
     conn: &mut PoolConnection<Postgres>,
     role: &model::Role,
 ) -> Result<model::Role, sqlx::Error> {
+
     sqlx::query_as::<_, model::Role>(
         r#"
   UPDATE rs_party.role SET 
@@ -400,7 +412,41 @@ mod tests {
 
         let user_id = saved_user.id.expect("saved user should have an ID");
 
-        let _deletion_response = delete_user(&mut conn, &user_id).await.expect("should be able to delete");
+        let new_event = model::Event {
+            ..Default::default()
+        };
 
+        let saved_event = insert_event(&mut conn, &new_event)
+            .await
+            .expect("failed to insert event");
+
+        let event_id = saved_event.id.expect("Saved event should have an ID");
+
+        let new_role = model::Role {
+            user_id,
+            role_type: model::RoleType::Owner,
+            event_id,
+            ..Default::default()
+        };
+
+        let saved_role = insert_role(&mut conn, &new_role)
+            .await
+            .expect("Role insertion failed");
+
+        let role_id = saved_role.id.expect("Role saved with no ID");
+
+        // Clean up
+        // Have to delete in this order because of foreign key constraints
+        let _role_deletion = delete_role(&mut conn, &role_id)
+            .await
+            .expect("role deletion failed");
+
+        let _event_deletion = delete_event(&mut conn, &event_id)
+            .await
+            .expect("event deletion failed");
+
+        let _user_deletion = delete_user(&mut conn, &user_id)
+            .await
+            .expect("should be able to delete");
     }
 }
