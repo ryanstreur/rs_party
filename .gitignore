@@ -1,6 +1,6 @@
-/target
-/doc
-/dist
+target
+doc
+dist
 
 # Rocket.toml config file omitted for security purposes
 Rocket.toml
