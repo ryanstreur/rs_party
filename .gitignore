@@ -4,7 +4,6 @@ dist
 
 # Rocket.toml config file omitted for security purposes
 Rocket.toml
-.env
 
 # LaTeX Auxiliary Files
 *.aux
