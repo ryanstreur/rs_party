@@ -9,16 +9,21 @@ use sqlx::postgres::{PgPoolOptions, PgQueryResult};
 use sqlx::Postgres;
 use uuid::Uuid;
 
+use crate::conf::get_db_connection_string;
 use crate::model::{self, ApiError, LoginParams, NewUserParams, RequestLogEntry, Session, User};
 
 /// Create and return a database pool connection
 pub async fn get_pool() -> Result<PgPool, sqlx::Error> {
-    let db_connection_str = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost/rs_party".to_string());
+    let db_conn_string = get_db_connection_string();
+
+    println!(
+        "Attempting pool connection with connection string: {}",
+        db_conn_string
+    );
 
     PgPoolOptions::new()
         .max_connections(10)
-        .connect(&db_connection_str)
+        .connect(&db_conn_string)
         .await
 }
 
@@ -315,7 +320,6 @@ pub async fn update_role(
     conn: &mut PoolConnection<Postgres>,
     role: &model::Role,
 ) -> Result<model::Role, sqlx::Error> {
-
     sqlx::query_as::<_, model::Role>(
         r#"
   UPDATE rs_party.role SET 

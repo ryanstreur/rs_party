@@ -38,17 +38,16 @@ pub async fn login_handler(
     State(state): State<Arc<AppState>>,
     extract::Json(login_params): extract::Json<LoginParams>,
 ) -> Result<String, ApiError> {
-    let conn_result = state
-        .db
-        .acquire()
-        .await;
+    let conn_result = state.db.acquire().await;
 
     let conn = match conn_result {
-      Ok(c) => c,
-      Err(e) => return Err(ApiError {
-        status_code: StatusCode::INTERNAL_SERVER_ERROR,
-        message: Some(e.to_string())
-      })
+        Ok(c) => c,
+        Err(e) => {
+            return Err(ApiError {
+                status_code: StatusCode::INTERNAL_SERVER_ERROR,
+                message: Some(e.to_string()),
+            })
+        }
     };
 
     let user_result = db::login(conn, &login_params).await;

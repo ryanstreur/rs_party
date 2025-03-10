@@ -1,0 +1,50 @@
+services:
+  server:
+    build: server
+    command: cargo run
+    env_file: .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./server:/app
+    depends_on:
+      - db
+    links:
+      - db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 2s
+      timeout: 60s
+      retries: 20
+
+  client:
+    build: client
+    command: npm run dev_dc
+    env_file: .env
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+    depends_on:
+      - server
+
+  db:
+    image: postgres
+    env_file: .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./volumes/db:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          -d",
+          "$POSTGRES_DB",
+          "-U",
+          "$POSTGRES_USER"
+        ]
+      interval: 2s
+      timeout: 60s
+      retries: 20

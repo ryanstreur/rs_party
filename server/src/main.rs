@@ -45,7 +45,17 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let db_pool = get_pool().await.expect("Could not connect to database");
+    let db_pool_result = get_pool().await;
+
+    let db_pool = match db_pool_result {
+        Ok(pool) => {
+            println!("DB Connection Succeeded");
+            pool
+        }
+        Err(e) => {
+            panic!("Could not connect to database\n{:?}", e);
+        }
+    };
 
     let app_state = Arc::new(AppState { db: db_pool });
 

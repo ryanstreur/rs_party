@@ -7,6 +7,12 @@ extern crate getopts;
 
 use getopts::Options;
 
+const DEFAULT_PG_HOST: &str = "localhost";
+const DEFAULT_PG_USER: &str = "postgres";
+const DEFAULT_PG_PASSWORD: &str = "postgres";
+const DEFAULT_PG_DB: &str = "rs_party";
+const DEFAULT_PG_PORT: &str = "5432";
+
 /// Configuration information for current running program
 pub struct Configuration {
     pub verbose: bool,
@@ -59,4 +65,17 @@ pub fn build_config() -> Configuration {
         verbose: matches.opt_present("v"),
         ..Configuration::default()
     }
+}
+
+pub fn get_db_connection_string() -> String {
+    let pg_user = env::var("POSTGRES_USER").unwrap_or(DEFAULT_PG_USER.to_string());
+    let pg_pw = env::var("POSTGRES_PASSWORD").unwrap_or(DEFAULT_PG_PASSWORD.to_string());
+    let pg_host = env::var("POSTGRES_HOST").unwrap_or(DEFAULT_PG_HOST.to_string());
+    let pg_port = env::var("POSTGRES_PORT").unwrap_or(DEFAULT_PG_PORT.to_string());
+    let pg_db = env::var("POSTGRES_DB").unwrap_or(DEFAULT_PG_DB.to_string());
+
+    format!(
+        "postgres://{}:{}@{}:{}/{}",
+        pg_user, pg_pw, pg_host, pg_port, pg_db
+    )
 }
