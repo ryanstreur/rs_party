@@ -12,8 +12,8 @@ services:
     links:
       - db
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
-      interval: 2s
+      test: ["CMD", "curl", "-f", "http://localhost:8080/hc"]
+      interval: 5s
       timeout: 60s
       retries: 20
 

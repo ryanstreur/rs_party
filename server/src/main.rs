@@ -1,5 +1,4 @@
 //! Main module
-//!
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -25,7 +24,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use rs_party::{
     db::get_pool,
     model::RequestLogEntry,
-    routes::{login_handler, root_handler, AppState},
+    routes::{get_hc_handler, login_handler, root_handler, AppState},
 };
 
 #[tokio::main]
@@ -63,6 +62,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(root_handler))
+        .route("/hc", get(get_hc_handler))
         .route("/login", post(login_handler))
         .layer(
             TraceLayer::new_for_http()

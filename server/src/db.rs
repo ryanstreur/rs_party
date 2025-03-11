@@ -10,7 +10,9 @@ use sqlx::Postgres;
 use uuid::Uuid;
 
 use crate::conf::get_db_connection_string;
-use crate::model::{self, ApiError, LoginParams, NewUserParams, RequestLogEntry, Session, User};
+use crate::model::{
+    self, ApiError, LoginParams, NewUserParams, RequestLogEntry, Session, SessionUser, User,
+};
 
 /// Create and return a database pool connection
 pub async fn get_pool() -> Result<PgPool, sqlx::Error> {
@@ -202,6 +204,30 @@ RETURNING *;
 
     match query_result {
         Ok(r) => Ok(r),
+        Err(e) => Err(ApiError::from(e)),
+    }
+}
+
+pub async fn get_user_from_session_key(
+    conn: &mut PoolConnection<Postgres>,
+    session_key: &String,
+) -> Result<SessionUser, ApiError> {
+    let q_result = sqlx::query_as::<_, SessionUser>(
+        r#"
+select *
+from user u
+    join session s on u.id = s.user_id
+where s.session_key = $1
+order by s.created desc, s.updated desc
+limit 1;
+    "#,
+    )
+    .bind(session_key)
+    .fetch_one(&mut **conn)
+    .await;
+
+    match q_result {
+        Ok(session_user) => Ok(session_user),
         Err(e) => Err(ApiError::from(e)),
     }
 }

@@ -46,9 +46,6 @@ pub struct LoginParams {
     pub password: String,
 }
 
-#[derive(Serialize, Debug)]
-pub struct LoginResponse {}
-
 #[derive(Debug)]
 pub struct RequestLogEntry {
     pub id: Option<u64>,
@@ -68,7 +65,20 @@ pub struct Session {
     pub updated: DateTime<Utc>,
 }
 
-#[derive(FromRow, Default)]
+#[derive(Debug, FromRow)]
+pub struct SessionUser {
+    pub session_key: uuid::Uuid,
+    pub user_id: i64,
+    pub session_data: String,
+    pub created: DateTime<Utc>,
+    pub updated: DateTime<Utc>,
+    pub email_address: String,
+    pub name: String,
+    pub password: Option<String>,
+    pub is_superuser: bool,
+}
+
+#[derive(FromRow, Default, Serialize, Deserialize)]
 pub struct Event {
     pub id: Option<i64>,
     pub start_date: NaiveDate,
