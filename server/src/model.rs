@@ -9,19 +9,6 @@ use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 
-// enum PartyRole {
-//   Guest,
-//   Organizer,
-//   Owner,
-// }
-
-// enum Rsvp {
-//   Yes,
-//   No,
-//   Maybe,
-//   Pending
-// }
-
 /// A struct for representing users in memory
 #[derive(Serialize, Default, Debug, FromRow)]
 pub struct User {
@@ -143,6 +130,25 @@ impl From<sqlx::Error> for ApiError {
                 status_code: StatusCode::INTERNAL_SERVER_ERROR,
                 message: Some("Unhandled Database error".to_string()),
             },
+        }
+    }
+}
+
+impl From<StatusCode> for ApiError {
+    fn from(status_code: StatusCode) -> Self {
+        ApiError {
+            status_code,
+            message: None,
+        }
+    }
+}
+
+impl From<(StatusCode, &str)> for ApiError {
+    fn from(value: (StatusCode, &str)) -> Self {
+        let (status_code, message) = value;
+        ApiError {
+            status_code,
+            message: Some(message.to_string()),
         }
     }
 }

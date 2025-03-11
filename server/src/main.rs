@@ -10,13 +10,14 @@ use tracing::{event, info_span, Level, Span};
 use axum::{
     body::Bytes,
     extract::MatchedPath,
-    http::{HeaderMap, Request},
+    http::{HeaderMap, HeaderValue, Request},
     response::Response,
     routing::{get, post},
     Router,
 };
 use tower_http::{
     classify::ServerErrorsFailureClass,
+    cors::{Any, Cors, CorsLayer},
     trace::{DefaultOnRequest, TraceLayer},
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -64,6 +65,11 @@ async fn main() {
         .route("/", get(root_handler))
         .route("/hc", get(get_hc_handler))
         .route("/login", post(login_handler))
+        .layer(
+            CorsLayer::new()
+                .allow_methods(Any)
+                .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
+        )
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {

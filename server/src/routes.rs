@@ -27,18 +27,16 @@ pub async fn get_hc_handler() -> StatusCode {
 pub async fn registration_handler(
     State(state): State<Arc<AppState>>,
     extract::Json(new_user_params): extract::Json<NewUserParams>,
-) -> Result<axum::Json<User>, StatusCode> {
-    let mut conn = state
-        .db
-        .acquire()
-        .await
-        .expect("could not get db connection");
-
+) -> Result<axum::Json<User>, ApiError> {
+    let mut conn = conn_from_state(&state).await?;
     let user_result = db::insert_user(&mut conn, &new_user_params).await;
 
     match user_result {
         Ok(user) => Ok(Json(user)),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(_) => Err(ApiError::from((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to insert user",
+        ))),
     }
 }
 
@@ -124,6 +122,7 @@ pub async fn authenticate(
 
     let diff = now - su.created;
 
+    // If the most recent session is older than 5 hours, send 401
     if diff.num_hours() >= 5 {
         return Err(ApiError {
             status_code: StatusCode::UNAUTHORIZED,
@@ -141,13 +140,7 @@ pub async fn post_event_handler(
 ) -> Result<model::Event, ApiError> {
     let mut conn = conn_from_state(&state).await?;
     let su = authenticate(state, headers).await?;
-
-    let event_result = db::insert_event(&mut conn, &new_event).await;
-
-    let event = match event_result {
-        Ok(e) => e,
-        Err(e) => return Err(ApiError::from(e)),
-    };
+    let event = db::insert_event(&mut conn, &new_event).await?;
 
     let event_id = match event.id {
         Some(id) => id,
