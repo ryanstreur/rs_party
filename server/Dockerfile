@@ -11,3 +11,4 @@ RUN   cargo build --bin dummy
 
 COPY  ./src /app/
 COPY  Makefile .
+USER  ryan
