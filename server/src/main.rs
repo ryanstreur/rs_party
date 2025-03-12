@@ -10,22 +10,22 @@ use tracing::{event, info_span, Level, Span};
 use axum::{
     body::Bytes,
     extract::MatchedPath,
-    http::{HeaderMap, HeaderValue, Request},
+    http::{HeaderMap, Request},
     response::Response,
     routing::{get, post},
     Router,
 };
 use tower_http::{
     classify::ServerErrorsFailureClass,
-    cors::{Any, Cors, CorsLayer},
     trace::{DefaultOnRequest, TraceLayer},
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use rs_party::{
     db::get_pool,
+    middleware::create_cors_layer,
     model::RequestLogEntry,
-    routes::{get_hc_handler, login_handler, root_handler, AppState},
+    routes::{get_hc_handler, login_handler, registration_handler, AppState},
 };
 
 #[tokio::main]
@@ -62,14 +62,12 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
 
     let app = Router::new()
-        .route("/", get(root_handler))
+        .route("/", get(get_hc_handler))
         .route("/hc", get(get_hc_handler))
         .route("/login", post(login_handler))
-        .layer(
-            CorsLayer::new()
-                .allow_methods(Any)
-                .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
-        )
+        .route("/register", post(registration_handler))
+        .with_state(app_state)
+        .layer(create_cors_layer())
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
@@ -94,20 +92,20 @@ async fn main() {
                     // created above.
                     DefaultOnRequest::new().level(Level::INFO),
                 )
-                .on_response(|_response: &Response, _latency: Duration, _span: &Span| {
-                    _span.record("time_responded", Utc::now().to_string());
+                .on_response(|_response: &Response, _latency: Duration, span: &Span| {
+                    span.record("time_responded", Utc::now().to_string());
 
-                    let time_logged_str = match _span.field("time_received") {
+                    let time_logged_str = match span.field("time_received") {
                         Some(field) => field.to_string(),
                         None => "".to_string(),
                     };
 
-                    let method_str = match _span.field("method") {
+                    let method_str = match span.field("method") {
                         Some(method_field) => method_field.to_string(),
                         None => "".to_string(),
                     };
 
-                    let path_str = match _span.field("matched_path") {
+                    let path_str = match span.field("matched_path") {
                         Some(path_field) => path_field.to_string(),
                         None => "/".to_string(),
                     };
@@ -123,7 +121,7 @@ async fn main() {
 
                     // db::insert_log_entry(&mut log_conn, entry);
 
-                    event!(parent: _span, Level::INFO, "finished processing request")
+                    event!(parent: span, Level::INFO, "finished processing request")
                     // ...
                 })
                 .on_body_chunk(|_chunk: &Bytes, _latency: Duration, _span: &Span| {
@@ -139,8 +137,7 @@ async fn main() {
                         // ...
                     },
                 ),
-        )
-        .with_state(app_state);
+        );
 
     axum::serve(listener, app).await.unwrap();
 }

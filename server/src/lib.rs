@@ -3,3 +3,4 @@ pub mod db;
 pub mod logging;
 pub mod model;
 pub mod routes;
+pub mod middleware;

@@ -16,10 +16,6 @@ pub struct AppState {
     pub db: PgPool,
 }
 
-pub async fn root_handler() -> String {
-    "Hello World".to_string()
-}
-
 pub async fn get_hc_handler() -> StatusCode {
     StatusCode::OK
 }
