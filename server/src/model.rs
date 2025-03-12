@@ -11,13 +11,32 @@ use sqlx::prelude::FromRow;
 
 /// A struct for representing users in memory
 #[derive(Serialize, Default, Debug, FromRow)]
-pub struct User {
+pub struct UserWithPassword {
     pub id: Option<i64>,
     pub email_address: String,
     pub name: String,
     pub password: Option<String>,
     pub is_superuser: bool,
     // TODO: Add created, updated, and last-logged-in times
+}
+
+#[derive(Serialize, Default, Debug, FromRow)]
+pub struct User {
+    pub id: Option<i64>,
+    pub email_address: String,
+    pub name: String,
+    pub is_superuser: bool,
+}
+
+impl From<UserWithPassword> for User {
+    fn from(value: UserWithPassword) -> Self {
+        User {
+            id: value.id,
+            email_address: value.email_address,
+            name: value.name,
+            is_superuser: value.is_superuser,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, FromRow)]

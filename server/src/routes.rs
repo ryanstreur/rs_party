@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
+use axum::extract;
 use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
-use axum::{extract, Json};
 use regex::Regex;
 
 use sqlx::pool::PoolConnection;
 use sqlx::{PgPool, Postgres};
 
 use crate::db::get_user_from_session_key;
-use crate::model::{self, ApiError, NewUserParams, SessionUser, User};
+use crate::model::{self, ApiError, NewUserParams, SessionUser};
 use crate::{db, model::LoginParams};
 
 pub struct AppState {
@@ -23,17 +23,22 @@ pub async fn get_hc_handler() -> StatusCode {
 pub async fn registration_handler(
     State(state): State<Arc<AppState>>,
     extract::Json(new_user_params): extract::Json<NewUserParams>,
-) -> Result<axum::Json<User>, ApiError> {
+) -> Result<String, ApiError> {
     let mut conn = conn_from_state(&state).await?;
     let user_result = db::insert_user(&mut conn, &new_user_params).await;
 
-    match user_result {
-        Ok(user) => Ok(Json(user)),
-        Err(_) => Err(ApiError::from((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to insert user",
-        ))),
-    }
+    let user = match user_result {
+        Ok(user) => user,
+        Err(_) => {
+            return Err(ApiError::from((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to insert user",
+            )))
+        }
+    };
+
+    let session = db::create_session(&mut conn, &user).await?;
+    Ok(session.session_key.to_string())
 }
 
 pub async fn conn_from_state(state: &Arc<AppState>) -> Result<PoolConnection<Postgres>, ApiError> {

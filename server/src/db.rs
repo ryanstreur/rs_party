@@ -11,7 +11,8 @@ use uuid::Uuid;
 
 use crate::conf::get_db_connection_string;
 use crate::model::{
-    self, ApiError, LoginParams, NewUserParams, RequestLogEntry, Session, SessionUser, User,
+    self, ApiError, LoginParams, NewUserParams, RequestLogEntry, Session, SessionUser,
+    UserWithPassword,
 };
 
 /// Create and return a database pool connection
@@ -30,15 +31,19 @@ pub async fn get_pool() -> Result<PgPool, sqlx::Error> {
 }
 
 /// Get first user in the database. Probably "Admin"
-pub async fn get_first_user(conn: &mut PoolConnection<Postgres>) -> Result<User, sqlx::Error> {
-    sqlx::query_as::<_, User>(r#"SELECT * FROM rs_party.user LIMIT 1;"#)
+pub async fn get_first_user(
+    conn: &mut PoolConnection<Postgres>,
+) -> Result<UserWithPassword, sqlx::Error> {
+    sqlx::query_as::<_, UserWithPassword>(r#"SELECT * FROM rs_party.user LIMIT 1;"#)
         .fetch_one(&mut **conn)
         .await
 }
 
 /// Get all users from the database
-pub async fn get_all_users(conn: &mut PoolConnection<Postgres>) -> Result<Vec<User>, sqlx::Error> {
-    sqlx::query_as::<_, User>(r#"SELECT * FROM rs_party.user"#)
+pub async fn get_all_users(
+    conn: &mut PoolConnection<Postgres>,
+) -> Result<Vec<UserWithPassword>, sqlx::Error> {
+    sqlx::query_as::<_, UserWithPassword>(r#"SELECT * FROM rs_party.user"#)
         .fetch_all(&mut **conn)
         .await
 }
@@ -47,7 +52,7 @@ pub async fn get_all_users(conn: &mut PoolConnection<Postgres>) -> Result<Vec<Us
 pub async fn insert_user(
     conn: &mut PoolConnection<Postgres>,
     new_user: &NewUserParams,
-) -> Result<User, sqlx::Error> {
+) -> Result<UserWithPassword, sqlx::Error> {
     // Create a secure hash with the password
 
     let hashed_password = match bcrypt::hash(&new_user.password, bcrypt::DEFAULT_COST) {
@@ -55,7 +60,7 @@ pub async fn insert_user(
         Err(_) => "Garbage".to_string(),
     };
 
-    sqlx::query_as::<_, User>(
+    sqlx::query_as::<_, UserWithPassword>(
         r#"
     INSERT INTO rs_party.user
     (email_address, name, password)
@@ -73,8 +78,8 @@ pub async fn insert_user(
 pub async fn get_user(
     conn: &mut PoolConnection<Postgres>,
     user_id: &i64,
-) -> Result<model::User, sqlx::Error> {
-    sqlx::query_as::<_, model::User>(
+) -> Result<model::UserWithPassword, sqlx::Error> {
+    sqlx::query_as::<_, model::UserWithPassword>(
         r#"
     SELECT id, name, email_address, is_superuser, email_confirmed, password
     FROM rs_party.user u 
@@ -88,9 +93,9 @@ pub async fn get_user(
 
 pub async fn update_user(
     conn: &mut PoolConnection<Postgres>,
-    user: &model::User,
-) -> Result<model::User, sqlx::Error> {
-    sqlx::query_as::<_, model::User>(
+    user: &model::UserWithPassword,
+) -> Result<model::UserWithPassword, sqlx::Error> {
+    sqlx::query_as::<_, model::UserWithPassword>(
         r#"
   UPDATE rs_party.user SET 
   (name, email_address, password, is_superuser)
@@ -122,11 +127,12 @@ pub async fn login(
     mut conn: PoolConnection<Postgres>,
     login_params: &LoginParams,
 ) -> Result<String, ApiError> {
-    let user_res =
-        sqlx::query_as::<_, User>(r#"SELECT * FROM rs_party.user as u WHERE email_address = $1;"#)
-            .bind(&login_params.email_address)
-            .fetch_one(&mut *conn)
-            .await;
+    let user_res = sqlx::query_as::<_, UserWithPassword>(
+        r#"SELECT * FROM rs_party.user as u WHERE email_address = $1;"#,
+    )
+    .bind(&login_params.email_address)
+    .fetch_one(&mut *conn)
+    .await;
 
     let user = match user_res {
         Ok(u) => u,
@@ -154,7 +160,7 @@ pub async fn login(
     };
 
     let session_creation_result = match pw_matched_user {
-        Ok(user) => create_session(&mut conn, user).await,
+        Ok(user) => create_session(&mut conn, &user).await,
         Err(err) => return Err(ApiError::internal(err)),
     };
 
@@ -167,7 +173,7 @@ pub async fn login(
 /// Create new session in database
 pub async fn create_session(
     conn: &mut PoolConnection<Postgres>,
-    user: User,
+    user: &UserWithPassword,
 ) -> Result<Session, ApiError> {
     let user_id = match user.id {
         Some(id) => id,
