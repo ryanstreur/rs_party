@@ -1,17 +1,23 @@
-import axios, { type AxiosInstance } from 'axios';
+import axios, { type AxiosInstance } from "axios";
 
-const BASE_URL = 'http://localhost:8080/';
+import { type RegistrationBody } from "./model";
 
-export const ax = axios.create({
-  baseURL: BASE_URL
-});
+const BASE_URL = "http://localhost:8080/";
 
 export class Server {
-  constructor(
-    private ax: AxiosInstance
-  ) {}
+  private ax: AxiosInstance;
+
+  constructor() {
+    this.ax = axios.create({
+      baseURL: BASE_URL,
+    });
+  }
 
   hc() {
-    return this.ax.get('/hc');
+    return this.ax.get("/hc");
+  }
+
+  postRegistration(body: RegistrationBody) {
+    return this.ax.post("/register", body);
   }
 }
