@@ -1,9 +1,9 @@
 FROM node:latest
 
 WORKDIR /app
+RUN npm install
+
 VOLUME /app
 COPY . /app
-
-RUN npm install
 
 EXPOSE 5173
