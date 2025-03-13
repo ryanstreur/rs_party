@@ -159,6 +159,8 @@ pub async fn post_event_handler(
     headers: HeaderMap,
     Json(new_event): Json<model::Event>,
 ) -> Result<Json<model::Event>, ApiError> {
+    use model::RoleType::*;
+
     let mut conn = conn_from_state(&state).await?;
     let su = authenticate(state, headers).await?;
     let event = db::insert_event(&mut conn, &new_event).await?;
@@ -166,15 +168,15 @@ pub async fn post_event_handler(
     let event_id = match event.id {
         Some(id) => id,
         None => {
-            return Err(ApiError {
-                status_code: StatusCode::INTERNAL_SERVER_ERROR,
-                message: Some("failed to save event".to_string()),
-            })
+            return Err(ApiError::from((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to save event",
+            )))
         }
     };
 
     let new_role = model::Role {
-        role_type: model::RoleType::Owner,
+        role_type: Owner,
         user_id: su.user_id,
         event_id,
         ..Default::default()
@@ -184,6 +186,23 @@ pub async fn post_event_handler(
 
     match role_insert_result {
         Ok(_) => Ok(Json(event)),
+        Err(e) => Err(ApiError::from(e)),
+    }
+}
+
+pub async fn get_owned_events_handler(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<model::Event>>, ApiError> {
+    use model::RoleType::*;
+
+    let mut conn = conn_from_state(&state).await?;
+    let su = authenticate(state, headers).await?;
+
+    let owned_events_result = db::owned_events(&mut conn, &su.user_id).await;
+
+    match owned_events_result {
+        Ok(events) => Ok(Json(events)),
         Err(e) => Err(ApiError::from(e)),
     }
 }

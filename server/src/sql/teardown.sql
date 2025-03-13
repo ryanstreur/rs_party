@@ -9,7 +9,7 @@ DROP TABLE IF EXISTS rs_party.user;
 
 -- Drop the types
 DROP TYPE IF EXISTS rs_party.response_type;
-DROP TYPE IF EXISTS rs_party.role_type;
+DROP TYPE IF EXISTS role_type;
 
 -- Drop the schema
 DROP SCHEMA IF EXISTS rs_party;

@@ -1,4 +1,4 @@
-use axum::http::HeaderValue;
+use axum::http::{header, HeaderValue};
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -25,5 +25,5 @@ pub fn create_cors_layer() -> CorsLayer {
     CorsLayer::new()
         .allow_methods(Any)
         .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
-        .allow_headers(Any)
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
 }

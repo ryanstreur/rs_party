@@ -41,8 +41,8 @@ CREATE TABLE IF NOT EXISTS rs_party.event (
   id bigint GENERATED ALWAYS AS IDENTITY
   , start_date  date NOT NULL
   , end_date    date NOT NULL
-  , start_time  time with time zone
-  , end_time    time with time zone
+  , start_time  time
+  , end_time    time
   , place       varchar NOT NULL DEFAULT ''
   , CONSTRAINT event_id PRIMARY KEY (id)
 );

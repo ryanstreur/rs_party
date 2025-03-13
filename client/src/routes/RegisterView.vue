@@ -1,9 +1,7 @@
 <script setup>
 import { ref } from "vue";
 
-import { Server } from "../api";
-
-const server = new Server();
+import { server } from "../api";
 
 const email_input = ref("");
 const name_input = ref("");
@@ -23,8 +21,9 @@ async function submit_registration_form(event) {
       name: name_input.value,
     });
 
-    console.log("response successful", res.data)
+    console.log("response successful", res.data);
     localStorage.setItem("sessionKey", res.data);
+    this.$router.push({path: "/"});
   } catch (e) {
     console.error("registration failed", e);
   }
@@ -48,7 +47,4 @@ async function submit_registration_form(event) {
     />
     <button type="submit">Submit</button>
   </form>
-
-  <p>email: {{ email_input }}</p>
-  <p>name: {{ name_input }}</p>
 </template>

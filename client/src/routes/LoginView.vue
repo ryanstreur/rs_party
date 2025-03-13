@@ -15,6 +15,7 @@ import { store } from '../store';
     try {
       const res = await server.postLogin(loginData.value);
       store.setSessionKey(res.data);
+      this.$route.push({ path: "/" })
     } catch (e) {
       console.error(e);
     }

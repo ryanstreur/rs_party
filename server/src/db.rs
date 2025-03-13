@@ -277,7 +277,7 @@ pub async fn insert_event(
     conn: &mut PoolConnection<Postgres>,
     new_event: &model::Event,
 ) -> Result<model::Event, sqlx::Error> {
-    sqlx::query_as::<_, model::Event>(
+    let result = sqlx::query_as::<_, model::Event>(
         r#"
   INSERT INTO rs_party.event
   (start_date, end_date, start_time, end_time, place)
@@ -291,7 +291,15 @@ pub async fn insert_event(
     .bind(new_event.end_time)
     .bind(new_event.place.clone())
     .fetch_one(&mut **conn)
-    .await
+    .await;
+
+    match result {
+        Ok(r) => Ok(r),
+        Err(e) => {
+            tracing::error!("Database error: {}", e.to_string());
+            Err(e)
+        }
+    }
 }
 
 pub async fn get_event(
@@ -323,6 +331,26 @@ pub async fn update_event(
     .bind(event.place.clone())
     .bind(event.id)
     .fetch_one(&mut **conn)
+    .await
+}
+
+/// Takes a user ID and returns the events that user owns
+pub async fn owned_events(
+    conn: &mut PoolConnection<Postgres>,
+    user_id: &i64,
+) -> Result<Vec<model::Event>, sqlx::Error> {
+    sqlx::query_as::<_, model::Event>(
+        r#"
+select
+	e.*
+from rs_party.user u
+	join rs_party."role" r on r.user_id = u.id
+	join rs_party."event" e on r.event_id = e.id
+where r."role_type" = 'owner' and u.id = $1;
+"#,
+    )
+    .bind(user_id)
+    .fetch_all(&mut **conn)
     .await
 }
 

@@ -68,6 +68,7 @@ async fn main() {
         .route("/register", post(registration_handler))
         .route("/user/self", get(routes::get_user_self_handler))
         .route("/event", post(routes::post_event_handler))
+        .route("/event/own", get(routes::get_owned_events_handler))
         .with_state(app_state)
         .layer(create_cors_layer())
         .layer(

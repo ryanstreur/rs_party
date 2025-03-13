@@ -95,6 +95,7 @@ pub struct SessionUser {
 }
 
 #[derive(FromRow, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Event {
     pub id: Option<i64>,
     pub start_date: NaiveDate,
@@ -159,6 +160,9 @@ impl From<sqlx::Error> for ApiError {
                 status_code: StatusCode::INTERNAL_SERVER_ERROR,
                 message: Some("DB Error: Column not found".to_string()),
             },
+            sqlx::Error::Database(e) => {
+                ApiError::from((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+            },
             _ => ApiError {
                 status_code: StatusCode::INTERNAL_SERVER_ERROR,
                 message: Some("Unhandled Database error".to_string()),
@@ -176,9 +180,17 @@ impl From<StatusCode> for ApiError {
     }
 }
 
+impl From<(StatusCode, String)> for ApiError {
+    fn from((status_code, message): (StatusCode, String)) -> Self {
+        ApiError {
+            status_code,
+            message: Some(message)
+        }
+    }
+}
+
 impl From<(StatusCode, &str)> for ApiError {
-    fn from(value: (StatusCode, &str)) -> Self {
-        let (status_code, message) = value;
+    fn from((status_code, message): (StatusCode, &str)) -> Self {
         ApiError {
             status_code,
             message: Some(message.to_string()),
