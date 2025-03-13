@@ -130,7 +130,7 @@ pub async fn login(
     let user_res = sqlx::query_as::<_, UserWithPassword>(
         r#"SELECT * FROM rs_party.user as u WHERE email_address = $1;"#,
     )
-    .bind(&login_params.email_address)
+    .bind(&login_params.email)
     .fetch_one(&mut *conn)
     .await;
 
@@ -214,15 +214,37 @@ RETURNING *;
     }
 }
 
+/// Delete a session in the database by id
+pub async fn delete_session(
+    conn: &mut PoolConnection<Postgres>,
+    session_key: &Uuid,
+) -> Result<PgQueryResult, sqlx::Error> {
+    sqlx::query(
+        r#"
+DELETE FROM rs_party.session s WHERE s.session_key = $1"#,
+    )
+    .bind(session_key)
+    .execute(&mut **conn)
+    .await
+}
+
 pub async fn get_user_from_session_key(
     conn: &mut PoolConnection<Postgres>,
-    session_key: &String,
-) -> Result<SessionUser, ApiError> {
-    let q_result = sqlx::query_as::<_, SessionUser>(
+    session_key: &Uuid,
+) -> Result<SessionUser, sqlx::Error> {
+    sqlx::query_as::<_, SessionUser>(
         r#"
-select *
-from user u
-    join session s on u.id = s.user_id
+select 
+    s.session_key, 
+    u.id as user_id,
+    s.session_data,
+    s.created,
+    s.updated,
+    u.email_address,
+    u.name,
+    u.is_superuser
+from rs_party.user u
+    join rs_party.session s on u.id = s.user_id
 where s.session_key = $1
 order by s.created desc, s.updated desc
 limit 1;
@@ -230,12 +252,7 @@ limit 1;
     )
     .bind(session_key)
     .fetch_one(&mut **conn)
-    .await;
-
-    match q_result {
-        Ok(session_user) => Ok(session_user),
-        Err(e) => Err(ApiError::from(e)),
-    }
+    .await
 }
 
 pub async fn insert_log_entry(
@@ -484,5 +501,49 @@ mod tests {
         let _user_deletion = delete_user(&mut conn, &user_id)
             .await
             .expect("should be able to delete");
+    }
+
+    #[tokio::test]
+    pub async fn test_user_from_session() {
+        let pool = get_pool().await.expect("Couldn't get db pool");
+        let mut conn = pool.acquire().await.expect("Couldn't get db connection");
+
+        let u = NewUserParams {
+            name: "Test User".to_string(),
+            password: "password not yet hashed".to_string(),
+            email: "test@example.com".to_string(),
+        };
+
+        let saved_user = insert_user(&mut conn, &u)
+            .await
+            .expect("couldn't insert user");
+
+        let session = create_session(&mut conn, &saved_user)
+            .await
+            .expect("Couldn't create session");
+
+        let user_id = saved_user.id.expect("No ID on saved user");
+
+        let second_user_result = get_user_from_session_key(&mut conn, &session.session_key).await;
+
+        let second_user = match second_user_result {
+            Ok(u) => u,
+            Err(e) => {
+                assert_eq!(e.to_string(), "".to_string());
+                panic!("Should be able to get user");
+            }
+        };
+
+        let second_user_id = second_user.user_id;
+
+        assert_eq!(user_id, second_user_id);
+
+        let _session_deletion = delete_session(&mut conn, &session.session_key)
+            .await
+            .expect("Couldn't delete session");
+
+        let _user_deletion = delete_user(&mut conn, &user_id)
+            .await
+            .expect("Couldn't delete user");
     }
 }

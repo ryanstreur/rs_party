@@ -1,12 +1,13 @@
+use std::str::FromStr;
 use std::sync::Arc;
 
-use axum::extract;
-use axum::extract::State;
+use axum::extract::{Json, State};
 use axum::http::{HeaderMap, StatusCode};
 use regex::Regex;
 
 use sqlx::pool::PoolConnection;
 use sqlx::{PgPool, Postgres};
+use uuid::Uuid;
 
 use crate::db::get_user_from_session_key;
 use crate::model::{self, ApiError, NewUserParams, SessionUser};
@@ -22,7 +23,7 @@ pub async fn get_hc_handler() -> StatusCode {
 
 pub async fn registration_handler(
     State(state): State<Arc<AppState>>,
-    extract::Json(new_user_params): extract::Json<NewUserParams>,
+    Json(new_user_params): Json<NewUserParams>,
 ) -> Result<String, ApiError> {
     let mut conn = conn_from_state(&state).await?;
     let user_result = db::insert_user(&mut conn, &new_user_params).await;
@@ -50,7 +51,7 @@ pub async fn conn_from_state(state: &Arc<AppState>) -> Result<PoolConnection<Pos
 
 pub async fn login_handler(
     State(state): State<Arc<AppState>>,
-    extract::Json(login_params): extract::Json<LoginParams>,
+    Json(login_params): Json<LoginParams>,
 ) -> Result<String, ApiError> {
     let conn_result = state.db.acquire().await;
 
@@ -71,15 +72,34 @@ pub async fn login_handler(
     }
 }
 
-pub fn extract_bearer_token(header_str: &str) -> Option<String> {
+pub fn extract_bearer_token(header_str: &str) -> Result<Uuid, ApiError> {
     // https://docs.rs/regex/latest/regex/
 
     let Ok(re) = Regex::new(r"Bearer: (?<token>.+)") else {
-        return None;
+        return Err(ApiError::from((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to create regex",
+        )));
     };
 
-    let caps = re.captures(header_str)?;
-    Some(caps["token"].to_string())
+    let Some(caps) = re.captures(header_str) else {
+        return Err(ApiError::from((StatusCode::BAD_REQUEST, "No bearer token")));
+    };
+
+    let token = caps["token"].to_string();
+    let session_key_result = Uuid::from_str(&token);
+
+    let session_key = match session_key_result {
+        Ok(key) => key,
+        Err(_e) => {
+            return Err(ApiError::from((
+                StatusCode::BAD_REQUEST,
+                "failed to parse uuid",
+            )))
+        }
+    };
+
+    Ok(session_key)
 }
 
 pub async fn authenticate(
@@ -107,38 +127,38 @@ pub async fn authenticate(
         }
     };
 
-    let token = match extract_bearer_token(&header_str) {
-        Some(t) => t,
-        None => {
-            return Err(ApiError {
-                status_code: StatusCode::UNAUTHORIZED,
-                message: Some("Bearer token not found".to_string()),
-            })
-        }
-    };
-
+    let token = extract_bearer_token(&header_str)?;
     let su = get_user_from_session_key(&mut conn, &token).await?;
-
     let now = chrono::Utc::now();
 
     let diff = now - su.created;
 
     // If the most recent session is older than 5 hours, send 401
     if diff.num_hours() >= 5 {
-        return Err(ApiError {
-            status_code: StatusCode::UNAUTHORIZED,
-            message: Some("Session expired".to_string()),
-        });
+        return Err(ApiError::from((
+            StatusCode::UNAUTHORIZED,
+            "Session expired",
+        )));
     }
 
     Ok(su)
 }
 
+/// Get the currently authenticated user based on the session key in the header
+pub async fn get_user_self_handler(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    _: String,
+) -> Result<Json<model::User>, ApiError> {
+    let su = authenticate(state, headers).await?;
+    Ok(Json(model::User::from(su)))
+}
+
 pub async fn post_event_handler(
     State(state): State<Arc<AppState>>,
-    extract::Json(new_event): extract::Json<model::Event>,
     headers: HeaderMap,
-) -> Result<model::Event, ApiError> {
+    Json(new_event): Json<model::Event>,
+) -> Result<Json<model::Event>, ApiError> {
     let mut conn = conn_from_state(&state).await?;
     let su = authenticate(state, headers).await?;
     let event = db::insert_event(&mut conn, &new_event).await?;
@@ -163,7 +183,7 @@ pub async fn post_event_handler(
     let role_insert_result = db::insert_role(&mut conn, &new_role).await;
 
     match role_insert_result {
-        Ok(_) => Ok(event),
+        Ok(_) => Ok(Json(event)),
         Err(e) => Err(ApiError::from(e)),
     }
 }
@@ -175,7 +195,7 @@ mod tests {
 
     #[test]
     pub fn test_extract_bearer_token() {
-        let token_in = "abcdef";
+        let token_in = Uuid::new_v4().to_string();
         let auth_header = format!("Bearer: {}", token_in);
 
         // let token_out = extract_bearer_token(&auth_header).expect("Failed to extract bearer token");
@@ -188,10 +208,11 @@ mod tests {
             panic!("No captures");
         };
 
-        let mut token_out = caps["token"].to_string();
-        assert_eq!(token_out, token_in);
+        let token_out = caps["token"].to_string();
+        assert_eq!(token_out, token_in.to_string());
 
-        token_out = extract_bearer_token(&auth_header).expect("Capturing bearer token failed");
-        assert_eq!(token_out, token_in);
+        let token_out_uuid =
+            extract_bearer_token(&auth_header).expect("Capturing bearer token failed");
+        assert_eq!(token_out_uuid.to_string(), token_in);
     }
 }

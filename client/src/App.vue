@@ -1,5 +1,6 @@
 <script setup lang="ts">
   import  HealthCheck  from "./components/HealthCheck.vue";
+  import { store } from "./store";
 </script>
 
 <template>
@@ -8,12 +9,24 @@
       <li>
         <RouterLink to="/">Home</RouterLink>
       </li>
-      <li>
-        <RouterLink to="/about">About</RouterLink>
-      </li>
-      <li>
-        <RouterLink to="/register">Register</RouterLink>
-      </li>
+      <div v-if="store.authenticated">
+        <li>
+          <button @click="store.logOut">
+            Log Out
+          </button>
+        </li>
+      </div>
+      <div v-else>
+        <li>
+          <RouterLink to="/about">About</RouterLink>
+        </li>
+        <li>
+          <RouterLink to="/login">Log In</RouterLink>
+        </li>
+        <li>
+          <RouterLink to="/register">Register</RouterLink>
+        </li>
+      </div>
     </ul>
   </nav>
   <main>

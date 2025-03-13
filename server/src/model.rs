@@ -20,12 +20,23 @@ pub struct UserWithPassword {
     // TODO: Add created, updated, and last-logged-in times
 }
 
-#[derive(Serialize, Default, Debug, FromRow)]
+#[derive(Serialize, Deserialize, Default, Debug, FromRow)]
 pub struct User {
     pub id: Option<i64>,
     pub email_address: String,
     pub name: String,
     pub is_superuser: bool,
+}
+
+impl From<SessionUser> for User {
+    fn from(value: SessionUser) -> Self {
+        User {
+            id: Some(value.user_id),
+            email_address: value.email_address,
+            name: value.name,
+            is_superuser: value.is_superuser,
+        }
+    }
 }
 
 impl From<UserWithPassword> for User {
@@ -48,7 +59,7 @@ pub struct NewUserParams {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginParams {
-    pub email_address: String,
+    pub email: String,
     pub password: String,
 }
 
@@ -80,7 +91,6 @@ pub struct SessionUser {
     pub updated: DateTime<Utc>,
     pub email_address: String,
     pub name: String,
-    pub password: Option<String>,
     pub is_superuser: bool,
 }
 
@@ -144,6 +154,10 @@ impl From<sqlx::Error> for ApiError {
             sqlx::Error::RowNotFound => ApiError {
                 status_code: StatusCode::NOT_FOUND,
                 ..Default::default()
+            },
+            sqlx::Error::ColumnNotFound(_) => ApiError {
+                status_code: StatusCode::INTERNAL_SERVER_ERROR,
+                message: Some("DB Error: Column not found".to_string()),
             },
             _ => ApiError {
                 status_code: StatusCode::INTERNAL_SERVER_ERROR,

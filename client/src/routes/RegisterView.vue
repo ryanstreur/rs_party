@@ -17,12 +17,14 @@ async function submit_registration_form(event) {
   // TODO: Email validation
   // TODO: Password Requirements
   try {
-    const res = server.postRegistration({
+    const res = await server.postRegistration({
       email: email_input.value,
       password: password_input.value,
       name: name_input.value,
     });
-    // TODO
+
+    console.log("response successful", res.data)
+    localStorage.setItem("sessionKey", res.data);
   } catch (e) {
     console.error("registration failed", e);
   }

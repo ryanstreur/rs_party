@@ -1,23 +1,23 @@
 <script setup lang="ts">
 import { ref, type Ref } from "vue";
 import { Server } from "../api";
+import { store } from "../store";
 
 const server = new Server();
 let last_successful_hc: Ref<string, string> = ref("None");
 let last_failed_hc: Ref<string, string> = ref("None");
+checkHealth();
+let healthCheckInterval = setInterval(checkHealth, store.healthCheckTimeout);
 
 async function checkHealth() {
   try {
     const res = await server.hc();
-    console.log("API Healthcheck succeeded", res);
     last_successful_hc.value = Date();
   } catch (err) {
     console.error("API Healthcheck failed", err);
     last_failed_hc.value = Date();
   }
 }
-
-setInterval(checkHealth, 5000);
 </script>
 
 <template>
@@ -31,6 +31,16 @@ setInterval(checkHealth, 5000);
         <th>Last Failed Health Check</th>
         <td>{{ last_failed_hc }}</td>
       </tr>
+      <tr>
+        <th>Session Key</th>
+        <td>{{ store.sessionKey ? store.sessionKey : "None" }}</td>
+      </tr>
+      <tr>
+        <th>User</th>
+        <td>{{ store.authenticatedUser ? store.authenticatedUser : "None" }}</td>
+      </tr>
     </tbody>
   </table>
 </template>
+
+

@@ -30,7 +30,7 @@ regex = "1.11.1"
 
 [dependencies.uuid]
 version = "1.13.1"
-features = ["v4"]
+features = ["v4", "serde"]
 
 [[bin]]
 name = "rs_party"
