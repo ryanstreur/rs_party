@@ -5,6 +5,9 @@ dist
 # Rocket.toml config file omitted for security purposes
 Rocket.toml
 
+# Db volume
+/volumes/db
+
 # LaTeX Auxiliary Files
 *.aux
 *.fdb_latexmk
