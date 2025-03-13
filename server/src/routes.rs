@@ -128,7 +128,13 @@ pub async fn authenticate(
     };
 
     let token = extract_bearer_token(&header_str)?;
-    let su = get_user_from_session_key(&mut conn, &token).await?;
+    let su_result = get_user_from_session_key(&mut conn, &token).await;
+    let su = match su_result {
+      Ok(s) => s,
+      Err(e) => {
+        return Err(ApiError::from((StatusCode::UNAUTHORIZED, "Session not retrieved")))
+      }
+    };
     let now = chrono::Utc::now();
 
     let diff = now - su.created;
@@ -159,7 +165,6 @@ pub async fn post_event_handler(
     headers: HeaderMap,
     Json(new_event): Json<model::Event>,
 ) -> Result<Json<model::Event>, ApiError> {
-    use model::RoleType::*;
 
     let mut conn = conn_from_state(&state).await?;
     let su = authenticate(state, headers).await?;
@@ -176,7 +181,7 @@ pub async fn post_event_handler(
     };
 
     let new_role = model::Role {
-        role_type: Owner,
+        role_type: model::RoleType::Owner,
         user_id: su.user_id,
         event_id,
         ..Default::default()
@@ -194,7 +199,6 @@ pub async fn get_owned_events_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
 ) -> Result<Json<Vec<model::Event>>, ApiError> {
-    use model::RoleType::*;
 
     let mut conn = conn_from_state(&state).await?;
     let su = authenticate(state, headers).await?;

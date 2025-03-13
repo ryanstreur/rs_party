@@ -9,11 +9,12 @@
 
 <template>
   <h1>Events</h1>
-  <ol>
-    <li v-for="e in store.ownedEvents">
+  <ol v-if="!store.ownedEvents || store.ownedEvents.length">
+    <li v-for="e in store.ownedEvents" :key="e.id">
       <pre>
         {{e}}
       </pre>
     </li>
   </ol>
+  <p v-else>No Events have been added yet</p>
 </template>

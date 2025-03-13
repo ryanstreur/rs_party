@@ -57,6 +57,15 @@ async fn main() {
         }
     };
 
+    let migration_result = sqlx::migrate!("./src/sql/migrations").run(&db_pool).await;
+
+    let _m_response = match migration_result {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!("Failed to run migrations: {}", e.to_string())
+        }
+    };
+
     let app_state = Arc::new(AppState { db: db_pool });
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();

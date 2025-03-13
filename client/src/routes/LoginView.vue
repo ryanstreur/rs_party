@@ -1,8 +1,11 @@
 <script setup>
   import { ref } from 'vue';
+  import { useRouter } from 'vue-router';
 
   import { server } from '../api';
-import { store } from '../store';
+  import { store } from '../store';
+
+  const router = useRouter();
 
   const loginData = ref({
     email: "",
@@ -11,11 +14,10 @@ import { store } from '../store';
 
   async function submitLoginForm(event) {
     event.preventDefault();
-
     try {
       const res = await server.postLogin(loginData.value);
       store.setSessionKey(res.data);
-      this.$route.push({ path: "/" })
+      router.push("/");
     } catch (e) {
       console.error(e);
     }

@@ -14,16 +14,19 @@ export class Server {
       baseURL: BASE_URL,
     });
 
-    this.ax.interceptors.response.use(r => r, e => {
-      console.error(e);
+    this.ax.interceptors.response.use(
+      (r) => r,
+      (e) => {
+        console.error(e);
 
-      if (e.status == 401) {
-        console.log('unauthorized')
-        store.logOut();
-        router.push({ path: "/" })
+        if (e.status == 401) {
+          console.log("unauthorized");
+          store.logOut();
+          router.push({ path: "/" });
+        }
+        store.setMostRecentAxiosError(e);
       }
-      store.setMostRecentAxiosError(e);
-    })
+    );
   }
 
   hc() {
@@ -43,14 +46,18 @@ export class Server {
   }
 
   async getUserSelf() {
-    const userSelfRes = await this.ax.get("/user/self", {
-      headers: {
-        Authorization: `Bearer: ${store.sessionKey}`,
-      },
-    });
+    try {
+      const userSelfRes = await this.ax.get("/user/self", {
+        headers: {
+          Authorization: `Bearer: ${store.sessionKey}`,
+        },
+      });
 
-    store.setUser(userSelfRes.data);
-    return userSelfRes.data;
+      store.setUser(userSelfRes.data);
+      return userSelfRes.data;
+    } catch (e) {
+      throw e;
+    }
   }
 
   async newEvent(event: Event): Promise<Event> {
@@ -58,13 +65,15 @@ export class Server {
       headers: { Authorization: "Bearer: " + store.sessionKey },
     });
 
+    this.getOwnedEvents();
+
     return newEventRes.data;
   }
 
-  async getOwnedEvents(event: Event): Promise<Event[]> {
+  async getOwnedEvents(): Promise<Event[]> {
     const eventsResponse = await this.ax.get("/event/own", {
       headers: { Authorization: "Bearer: " + store.sessionKey },
-    })
+    });
 
     store.setOwnedEvents(eventsResponse.data);
     return eventsResponse.data;

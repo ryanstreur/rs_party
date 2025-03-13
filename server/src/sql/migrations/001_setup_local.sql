@@ -1,2 +1,0 @@
-CREATE DATABASE IF NOT EXISTS rs_party;
-
