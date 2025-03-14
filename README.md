@@ -1,10 +1,47 @@
 # CS 523 Project: Party Planning App
 
-| Term | Winter 2025 |
-| :--- | :---------- |
-| Name | Ryan Streur |
+| Term       | Winter 2025                            |
+| :--------- | :------------------------------------- |
+| Name       | Ryan Streur                            |
+| GitHub URL | https://github.com/ryanstreur/rs_party |
 
 Project for Winter Classes 2025.
+
+## How to Build
+
+System Requirements: Either Docker Desktop OR
+
+- [Rust / Cargo](https://www.rust-lang.org/tools/install)
+- [Postgresql](https://www.postgresql.org/download/)
+- [NodeJS](https://nodejs.org/en/download)
+
+If using Docker, this application can be run with either `make` or `docker compose up`.
+
+If not using Docker:
+
+1. Update Makefile database connection variables to match local postgresql configuration
+2. Run `make db_setup` to create application database.
+3. Run `make server_run` to start server.
+4. In separate terminal window, run `make client_setup` to install node modules.
+5. Run `make client_run` to start client server.
+6. Visit [localhost:5173](http://localhost:5173) to interact with client.
+7. When finished, you can run `make clean` to drop the app database and delete the Rust target directory and the node_modules directory.
+
+| Make Command        | Effect                                                             |
+| :------------------ | :----------------------------------------------------------------- |
+| `make` / `make all` | Run entire project in Docker Compose (recommended)                 |
+| `make db_setup`     | Create application database with connection parameters in Makefile |
+| `make db_teardown`  | Drop application database with connection parameters in Makefile   |
+| `make server_test`  | Run server tests (requires active db connection)                   |
+| `make server_run`   | Run API server (requires active db connection)                     |
+| `make client_setup` | Install node modules required to run the client application        |
+| `make client_run`   | Run client application on local node server                        |
+
+## Intent
+
+Originally this project was intended to be a party planner application. 
+
+## Notes on Execution
 
 ## Sources of Inspiration
 
