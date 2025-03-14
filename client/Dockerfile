@@ -6,8 +6,8 @@ COPY ./package-lock.json /app/
 RUN npm install
 
 VOLUME /app
-COPY index.html tsconfig.app.json tsconfig.json tsconfig.node.json vite.config.ts ./public ./src /app/
+COPY index.html tsconfig.app.json tsconfig.json tsconfig.node.json vite.config.ts /app
+COPY ./public /app/public 
+COPY ./src /app/src
 
 EXPOSE 5173
-
-CMD npm run dev_dc

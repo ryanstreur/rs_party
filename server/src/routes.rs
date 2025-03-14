@@ -131,7 +131,7 @@ pub async fn authenticate(
     let su_result = get_user_from_session_key(&mut conn, &token).await;
     let su = match su_result {
       Ok(s) => s,
-      Err(e) => {
+      Err(_) => {
         return Err(ApiError::from((StatusCode::UNAUTHORIZED, "Session not retrieved")))
       }
     };

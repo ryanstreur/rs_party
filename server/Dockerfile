@@ -9,8 +9,8 @@ RUN rustup component add clippy
 # re-downloading and re-compiling dependencies on every change to files in 'src'
 COPY  Cargo.toml .
 COPY  Cargo.lock .
-COPY  ./bin/dummy.rs /app/bin/
+COPY  ./bin /app/bin
 RUN   cargo build --bin dummy
 
-COPY  ./src /app/
+COPY  ./src /app/src
 COPY  Makefile .
