@@ -1,6 +1,7 @@
 target
 doc
 dist
+*.tar.gz
 
 # Rocket.toml config file omitted for security purposes
 Rocket.toml
