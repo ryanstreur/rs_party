@@ -39,11 +39,26 @@ If not using Docker:
 | `make client_setup` | Install node modules required to run the client application        |
 | `make client_run`   | Run client application on local node server                        |
 
-## Intent
+## Intent and Execution
 
-Originally this project was intended to be a party planner application. 
+Originally this project was intended to be a party planner application. Below is a list of the original features I wanted to implement, with the current status.
 
-## Notes on Execution
+- [x] API Server Process                                          
+- [x] API Client can create user account                          
+- [x] API Client can log in (password)                            
+- [x] API Client can log out                                      
+- [x] API Client can make authenticated requests (Bearer JWT)     
+- [x] Authenticated Client can create events                      
+- [x] Owners and Organizers can list their events                 
+- [x] Owners and Organizers can delete their events               
+- [ ] Owners and Organizers can update their events               
+- [ ] Owners and Organizers can invite other users to events      
+- [ ] Owners and Organizers can assign user roles on their events 
+- [ ] Owners and organizers can remove users from their events    
+- [ ] Guests can RSVP to events                                   
+- [ ] Authenticated Client can update their RSVPs                 
+- [ ] Authenticated Client can view events they are invited to.   
+- [ ] Requests and Responses are logged in database               
 
 ## Sources of Inspiration
 
