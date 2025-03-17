@@ -19,7 +19,7 @@ use crate::model::{
 pub async fn get_pool() -> Result<PgPool, sqlx::Error> {
     let db_conn_string = get_db_connection_string();
 
-    println!(
+    tracing::info!(
         "Attempting pool connection with connection string: {}",
         db_conn_string
     );
@@ -470,7 +470,7 @@ mod tests {
 
         match get_result {
             Ok(_) => assert!(false),
-            Err(err) => println!("{}", err),
+            Err(err) => tracing::error!("{}", err),
         }
     }
 

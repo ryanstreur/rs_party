@@ -49,7 +49,7 @@ async fn main() {
 
     let db_pool = match db_pool_result {
         Ok(pool) => {
-            println!("DB Connection Succeeded");
+            tracing::info!("DB Connection Succeeded");
             pool
         }
         Err(e) => {
@@ -59,7 +59,7 @@ async fn main() {
 
     let migration_result = sqlx::migrate!("./src/sql/migrations").run(&db_pool).await;
 
-    let _m_response = match migration_result {
+    match migration_result {
         Ok(r) => r,
         Err(e) => {
             tracing::error!("Failed to run migrations: {}", e.to_string())

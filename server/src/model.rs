@@ -162,7 +162,7 @@ impl From<sqlx::Error> for ApiError {
             },
             sqlx::Error::Database(e) => {
                 ApiError::from((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
-            },
+            }
             _ => ApiError {
                 status_code: StatusCode::INTERNAL_SERVER_ERROR,
                 message: Some("Unhandled Database error".to_string()),
@@ -184,7 +184,7 @@ impl From<(StatusCode, String)> for ApiError {
     fn from((status_code, message): (StatusCode, String)) -> Self {
         ApiError {
             status_code,
-            message: Some(message)
+            message: Some(message),
         }
     }
 }

@@ -130,10 +130,13 @@ pub async fn authenticate(
     let token = extract_bearer_token(&header_str)?;
     let su_result = get_user_from_session_key(&mut conn, &token).await;
     let su = match su_result {
-      Ok(s) => s,
-      Err(_) => {
-        return Err(ApiError::from((StatusCode::UNAUTHORIZED, "Session not retrieved")))
-      }
+        Ok(s) => s,
+        Err(_) => {
+            return Err(ApiError::from((
+                StatusCode::UNAUTHORIZED,
+                "Session not retrieved",
+            )))
+        }
     };
     let now = chrono::Utc::now();
 
@@ -165,7 +168,6 @@ pub async fn post_event_handler(
     headers: HeaderMap,
     Json(new_event): Json<model::Event>,
 ) -> Result<Json<model::Event>, ApiError> {
-
     let mut conn = conn_from_state(&state).await?;
     let su = authenticate(state, headers).await?;
     let event = db::insert_event(&mut conn, &new_event).await?;
@@ -199,7 +201,6 @@ pub async fn get_owned_events_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
 ) -> Result<Json<Vec<model::Event>>, ApiError> {
-
     let mut conn = conn_from_state(&state).await?;
     let su = authenticate(state, headers).await?;
 

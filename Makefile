@@ -27,6 +27,7 @@ server_test:
 	cd server; \
 	cargo check; \
 	cargo clippy; \
+	cargo fmt; \
 	cargo test
 
 db_setup:
