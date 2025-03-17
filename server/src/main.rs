@@ -12,7 +12,7 @@ use axum::{
     extract::MatchedPath,
     http::{HeaderMap, Request},
     response::Response,
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use tower_http::{
@@ -57,15 +57,6 @@ async fn main() {
         }
     };
 
-    let migration_result = sqlx::migrate!("./src/sql/migrations").run(&db_pool).await;
-
-    match migration_result {
-        Ok(r) => r,
-        Err(e) => {
-            tracing::error!("Failed to run migrations: {}", e.to_string())
-        }
-    };
-
     let app_state = Arc::new(AppState { db: db_pool });
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
@@ -76,7 +67,11 @@ async fn main() {
         .route("/login", post(login_handler))
         .route("/register", post(registration_handler))
         .route("/user/self", get(routes::get_user_self_handler))
-        .route("/event", post(routes::post_event_handler))
+        .route(
+            "/event",
+            post(routes::post_event_handler).patch(routes::patch_event_handler),
+        )
+        .route("/event/{*event_id}", delete(routes::delete_event_handler))
         .route("/event/own", get(routes::get_owned_events_handler))
         .with_state(app_state)
         .layer(create_cors_layer())

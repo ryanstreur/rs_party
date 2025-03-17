@@ -1,10 +1,14 @@
 <script setup>
-  import { store } from '../store';
-  import { server } from '../api';
+import { store } from "../store";
+import { server } from "../api";
 
-  let events = store.ownedEvents;
+let events = store.ownedEvents;
 
-  server.getOwnedEvents()
+server.getOwnedEvents();
+
+function deleteButtonHandler(eventId) {
+  server.deleteEvent(eventId);
+}
 </script>
 
 <template>
@@ -12,8 +16,9 @@
   <ol v-if="!store.ownedEvents || store.ownedEvents.length">
     <li v-for="e in store.ownedEvents" :key="e.id">
       <pre>
-        {{e}}
+        {{ e }}
       </pre>
+      <button @click="deleteButtonHandler(e.id)">Delete</button>
     </li>
   </ol>
   <p v-else>No Events have been added yet</p>

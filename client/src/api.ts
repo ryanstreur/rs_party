@@ -2,7 +2,6 @@ import axios, { type AxiosInstance } from "axios";
 
 import { type Event, type LoginBody, type RegistrationBody } from "./model";
 import { store } from "./store";
-import { router } from "./router";
 
 const BASE_URL = "http://localhost:8080/";
 
@@ -61,6 +60,7 @@ export class Server {
   }
 
   async newEvent(event: Event): Promise<Event> {
+    console.log(store.sessionKey);
     const newEventRes = await this.ax.post("/event", event, {
       headers: { Authorization: "Bearer: " + store.sessionKey },
     });
@@ -77,6 +77,22 @@ export class Server {
 
     store.setOwnedEvents(eventsResponse.data);
     return eventsResponse.data;
+  }
+
+  async updateEvent(event: Event): Promise<Event> {
+    const updatedEventRes = await this.ax.patch("/event", event, {
+      headers: { Authorization: "Bearer: " + store.sessionKey },
+    });
+
+    return updatedEventRes.data as Event;
+  }
+
+  async deleteEvent(eventId: number) {
+    await this.ax.delete(`/event/${eventId}`, {
+      headers: { Authorization: "Bearer: " + store.sessionKey }
+    });
+
+    await this.getOwnedEvents();
   }
 }
 

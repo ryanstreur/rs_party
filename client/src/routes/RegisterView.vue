@@ -1,8 +1,10 @@
 <script setup>
 import { ref } from "vue";
+import { useRouter } from "vue-router";
 
 import { server } from "../api";
 
+const router = useRouter();
 const email_input = ref("");
 const name_input = ref("");
 const password_input = ref("");
@@ -23,7 +25,7 @@ async function submit_registration_form(event) {
 
     console.log("response successful", res.data);
     localStorage.setItem("sessionKey", res.data);
-    this.$router.push({path: "/"});
+    router.push({path: "/"});
   } catch (e) {
     console.error("registration failed", e);
   }

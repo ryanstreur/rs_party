@@ -2,6 +2,9 @@
   import { reactive } from 'vue';
   
   import { server } from '../api';
+  import { useRouter } from 'vue-router';
+
+  const router = useRouter();
 
   function getDateText() {
     const date = new Date();
@@ -21,6 +24,7 @@
     event.preventDefault();
     try {
       const newEventRes = await server.newEvent(newEventData);
+      router.push("/events")
     } catch (e) {
       console.error(e);
     }

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use axum::extract::{Json, State};
+use axum::extract::{Json, Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use regex::Regex;
 
@@ -10,7 +10,7 @@ use sqlx::{PgPool, Postgres};
 use uuid::Uuid;
 
 use crate::db::get_user_from_session_key;
-use crate::model::{self, ApiError, NewUserParams, SessionUser};
+use crate::model::{self, ApiError, NewUserParams, RoleType, SessionUser};
 use crate::{db, model::LoginParams};
 
 pub struct AppState {
@@ -194,6 +194,74 @@ pub async fn post_event_handler(
     match role_insert_result {
         Ok(_) => Ok(Json(event)),
         Err(e) => Err(ApiError::from(e)),
+    }
+}
+
+pub async fn patch_event_handler(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(event_to_update): Json<model::Event>,
+) -> Result<Json<model::Event>, ApiError> {
+    let mut conn = conn_from_state(&state).await?;
+    let su = authenticate(state, headers).await?;
+
+    let event_id = match event_to_update.id {
+        Some(id) => id,
+        None => return Err(ApiError::from((StatusCode::BAD_REQUEST, "Event has no ID"))),
+    };
+
+    let user_role = db::get_event_user_role(&mut conn, &su.user_id, &event_id).await?;
+
+    if user_role.role_type == RoleType::Guest {
+        return Err(ApiError::from((
+            StatusCode::UNAUTHORIZED,
+            "Not authorized to modify event",
+        )));
+    }
+
+    let update_result = db::update_event(&mut conn, &event_to_update).await;
+
+    match update_result {
+        Ok(event) => Ok(Json(event)),
+        Err(e) => Err(ApiError::from(e)),
+    }
+}
+
+pub async fn delete_event_handler(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(event_id): Path<i64>,
+) -> Result<(), ApiError>{
+    let mut conn = conn_from_state(&state).await?;
+    let su = authenticate(state, headers).await?;
+
+    let user_role = db::get_event_user_role(&mut conn, &su.user_id, &event_id).await?;
+
+
+    if user_role.role_type == RoleType::Guest {
+        return Err(ApiError::from((
+            StatusCode::UNAUTHORIZED,
+            "Not authorized to delete event",
+        )));
+    }
+
+    let role_id = match user_role.id {
+      Some(id) => id,
+      None => return Err(ApiError::from((StatusCode::INTERNAL_SERVER_ERROR, "No role ID")))
+    };
+
+    let role_deletion_result = db::delete_role(&mut conn, &role_id).await;
+
+    match role_deletion_result {
+      Ok(_) => (),
+      Err(e) => return Err(ApiError::from(e))
+    }
+
+    let deletion_result = db::delete_event(&mut conn, &event_id).await;
+
+    match deletion_result {
+      Ok(_) => Ok(()),
+      Err(e) => Err(ApiError::from(e))
     }
 }
 

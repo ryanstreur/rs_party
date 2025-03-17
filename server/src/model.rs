@@ -110,7 +110,7 @@ pub struct Event {
 // It did not work and said the types were incompatible. However, when I refreshed the database having removed role_type
 // from the schema, everything seemed to work just fine. This may be an issue with sqlx.
 // TODO: Reproduce in controlled environment, write up coherent issue for sqlx
-#[derive(Clone, Debug, sqlx::Type, Default)]
+#[derive(Clone, Debug, sqlx::Type, Default, PartialEq)]
 #[sqlx(type_name = "role_type", rename_all = "lowercase")]
 pub enum RoleType {
     Owner,

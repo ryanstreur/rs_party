@@ -19,6 +19,10 @@ client_setup:
 	cd client; \
 	npm install
 
+server_setup:
+	cd server; \
+	cargo run --bin migrate
+
 server_run:
 	cd server; \
 	cargo run
