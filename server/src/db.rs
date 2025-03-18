@@ -369,19 +369,21 @@ pub async fn get_event_user_role(
     user_id: &i64,
     event_id: &i64,
 ) -> Result<model::Role, ApiError> {
-    let role_result = sqlx::query_as::<_, model::Role>(r#"
+    let role_result = sqlx::query_as::<_, model::Role>(
+        r#"
     SELECT *
     FROM rs_party.role r
     WHERE r.user_id = $1 AND r.event_id = $2;
-"#)
-        .bind(user_id)
-        .bind(event_id)
-        .fetch_one(&mut **conn)
-        .await;
+"#,
+    )
+    .bind(user_id)
+    .bind(event_id)
+    .fetch_one(&mut **conn)
+    .await;
 
     match role_result {
         Ok(r) => Ok(r),
-        Err(e) => Err(ApiError::from(e))
+        Err(e) => Err(ApiError::from(e)),
     }
 }
 

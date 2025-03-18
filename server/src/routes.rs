@@ -231,12 +231,11 @@ pub async fn delete_event_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Path(event_id): Path<i64>,
-) -> Result<(), ApiError>{
+) -> Result<(), ApiError> {
     let mut conn = conn_from_state(&state).await?;
     let su = authenticate(state, headers).await?;
 
     let user_role = db::get_event_user_role(&mut conn, &su.user_id, &event_id).await?;
-
 
     if user_role.role_type == RoleType::Guest {
         return Err(ApiError::from((
@@ -246,22 +245,27 @@ pub async fn delete_event_handler(
     }
 
     let role_id = match user_role.id {
-      Some(id) => id,
-      None => return Err(ApiError::from((StatusCode::INTERNAL_SERVER_ERROR, "No role ID")))
+        Some(id) => id,
+        None => {
+            return Err(ApiError::from((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "No role ID",
+            )))
+        }
     };
 
     let role_deletion_result = db::delete_role(&mut conn, &role_id).await;
 
     match role_deletion_result {
-      Ok(_) => (),
-      Err(e) => return Err(ApiError::from(e))
+        Ok(_) => (),
+        Err(e) => return Err(ApiError::from(e)),
     }
 
     let deletion_result = db::delete_event(&mut conn, &event_id).await;
 
     match deletion_result {
-      Ok(_) => Ok(()),
-      Err(e) => Err(ApiError::from(e))
+        Ok(_) => Ok(()),
+        Err(e) => Err(ApiError::from(e)),
     }
 }
 
