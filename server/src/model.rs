@@ -20,6 +20,7 @@ pub struct UserWithPassword {
     // TODO: Add created, updated, and last-logged-in times
 }
 
+/// Application user
 #[derive(Serialize, Deserialize, Default, Debug, FromRow)]
 pub struct User {
     pub id: Option<i64>,
@@ -50,6 +51,7 @@ impl From<UserWithPassword> for User {
     }
 }
 
+/// Data model for registration requests
 #[derive(Deserialize, Debug, FromRow)]
 pub struct NewUserParams {
     pub email: String,
@@ -57,12 +59,14 @@ pub struct NewUserParams {
     pub password: String,
 }
 
+/// Data model for login parameters
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginParams {
     pub email: String,
     pub password: String,
 }
 
+/// Entry into the db request log
 #[derive(Debug)]
 pub struct RequestLogEntry {
     pub id: Option<u64>,
@@ -73,6 +77,7 @@ pub struct RequestLogEntry {
     pub req_headers: String,
 }
 
+/// Represents an authentication session
 #[derive(Debug, FromRow)]
 pub struct Session {
     pub session_key: uuid::Uuid,
@@ -82,6 +87,7 @@ pub struct Session {
     pub updated: DateTime<Utc>,
 }
 
+/// Model for retrieving session and user data from database in one request
 #[derive(Debug, FromRow)]
 pub struct SessionUser {
     pub session_key: uuid::Uuid,
@@ -94,6 +100,7 @@ pub struct SessionUser {
     pub is_superuser: bool,
 }
 
+/// Event record
 #[derive(FromRow, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Event {
@@ -110,6 +117,7 @@ pub struct Event {
 // It did not work and said the types were incompatible. However, when I refreshed the database having removed role_type
 // from the schema, everything seemed to work just fine. This may be an issue with sqlx.
 // TODO: Reproduce in controlled environment, write up coherent issue for sqlx
+/// List of types of user role with respect to events
 #[derive(Clone, Debug, sqlx::Type, Default, PartialEq)]
 #[sqlx(type_name = "role_type", rename_all = "lowercase")]
 pub enum RoleType {
@@ -129,6 +137,7 @@ impl From<RoleType> for String {
     }
 }
 
+/// Record for user roles with respect to events.
 #[derive(FromRow, Default)]
 pub struct Role {
     pub id: Option<i64>,
@@ -137,6 +146,7 @@ pub struct Role {
     pub event_id: i64,
 }
 
+/// Struct for representing errors which can be converted to API responses
 #[derive(Debug, Clone, Default)]
 pub struct ApiError {
     pub status_code: StatusCode,

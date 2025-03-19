@@ -84,7 +84,7 @@ Were I to go through this project again from scratch I would have
 I should have
 
 - Added more tests
-- Added more documentation comments
+- Added documentation comments earlier
 
 ## Sources of Inspiration
 

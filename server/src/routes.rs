@@ -1,3 +1,9 @@
+/*!
+# Axum route handlers
+
+Some functions
+*/
+
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -13,35 +19,12 @@ use crate::db::get_user_from_session_key;
 use crate::model::{self, ApiError, NewUserParams, RoleType, SessionUser};
 use crate::{db, model::LoginParams};
 
+/// State Struct To Get Passed to Routes
 pub struct AppState {
     pub db: PgPool,
 }
 
-pub async fn get_hc_handler() -> StatusCode {
-    StatusCode::OK
-}
-
-pub async fn registration_handler(
-    State(state): State<Arc<AppState>>,
-    Json(new_user_params): Json<NewUserParams>,
-) -> Result<String, ApiError> {
-    let mut conn = conn_from_state(&state).await?;
-    let user_result = db::insert_user(&mut conn, &new_user_params).await;
-
-    let user = match user_result {
-        Ok(user) => user,
-        Err(_) => {
-            return Err(ApiError::from((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to insert user",
-            )))
-        }
-    };
-
-    let session = db::create_session(&mut conn, &user).await?;
-    Ok(session.session_key.to_string())
-}
-
+/// Get database connection from Application State
 pub async fn conn_from_state(state: &Arc<AppState>) -> Result<PoolConnection<Postgres>, ApiError> {
     match state.db.acquire().await {
         Ok(conn) => Ok(conn),
@@ -49,29 +32,7 @@ pub async fn conn_from_state(state: &Arc<AppState>) -> Result<PoolConnection<Pos
     }
 }
 
-pub async fn login_handler(
-    State(state): State<Arc<AppState>>,
-    Json(login_params): Json<LoginParams>,
-) -> Result<String, ApiError> {
-    let conn_result = state.db.acquire().await;
-
-    let conn = match conn_result {
-        Ok(c) => c,
-        Err(e) => {
-            return Err(ApiError {
-                status_code: StatusCode::INTERNAL_SERVER_ERROR,
-                message: Some(e.to_string()),
-            })
-        }
-    };
-
-    let user_result = db::login(conn, &login_params).await;
-    match user_result {
-        Ok(session_id) => Ok(session_id),
-        Err(err_str) => Err(err_str),
-    }
-}
-
+/// Get bearer token from header string
 pub fn extract_bearer_token(header_str: &str) -> Result<Uuid, ApiError> {
     // https://docs.rs/regex/latest/regex/
 
@@ -102,6 +63,59 @@ pub fn extract_bearer_token(header_str: &str) -> Result<Uuid, ApiError> {
     Ok(session_key)
 }
 
+/// Handle health check requests
+pub async fn get_hc_handler() -> StatusCode {
+    StatusCode::OK
+}
+
+/// Handle registration requests
+pub async fn registration_handler(
+    State(state): State<Arc<AppState>>,
+    Json(new_user_params): Json<NewUserParams>,
+) -> Result<String, ApiError> {
+    let mut conn = conn_from_state(&state).await?;
+    let user_result = db::insert_user(&mut conn, &new_user_params).await;
+
+    let user = match user_result {
+        Ok(user) => user,
+        Err(_) => {
+            return Err(ApiError::from((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to insert user",
+            )))
+        }
+    };
+
+    let session = db::create_session(&mut conn, &user).await?;
+    Ok(session.session_key.to_string())
+}
+
+/// Handle login requests
+pub async fn login_handler(
+    State(state): State<Arc<AppState>>,
+    Json(login_params): Json<LoginParams>,
+) -> Result<String, ApiError> {
+    let conn_result = state.db.acquire().await;
+
+    let conn = match conn_result {
+        Ok(c) => c,
+        Err(e) => {
+            return Err(ApiError {
+                status_code: StatusCode::INTERNAL_SERVER_ERROR,
+                message: Some(e.to_string()),
+            })
+        }
+    };
+
+    let user_result = db::login(conn, &login_params).await;
+    match user_result {
+        Ok(session_id) => Ok(session_id),
+        Err(err_str) => Err(err_str),
+    }
+}
+
+/// Get session and user data by extracting session key from header and
+/// getting data from database.
 pub async fn authenticate(
     state: Arc<AppState>,
     headers: HeaderMap,
@@ -153,7 +167,7 @@ pub async fn authenticate(
     Ok(su)
 }
 
-/// Get the currently authenticated user based on the session key in the header
+/// Get data for the currently authenticated user based on the session key in the header
 pub async fn get_user_self_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -163,6 +177,7 @@ pub async fn get_user_self_handler(
     Ok(Json(model::User::from(su)))
 }
 
+/// Handle post requests for creating new events
 pub async fn post_event_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -197,6 +212,7 @@ pub async fn post_event_handler(
     }
 }
 
+/// Handle patch requests to update events
 pub async fn patch_event_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -227,6 +243,7 @@ pub async fn patch_event_handler(
     }
 }
 
+/// Handle delete requests to remove events
 pub async fn delete_event_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -269,6 +286,7 @@ pub async fn delete_event_handler(
     }
 }
 
+/// Get a list of events for which the currently-authenticated user is the owner
 pub async fn get_owned_events_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,

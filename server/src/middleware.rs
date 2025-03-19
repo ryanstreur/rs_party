@@ -1,3 +1,5 @@
+//! Definitions for tracing initialization and for CORS middleware layer
+
 use axum::http::{header, HeaderValue};
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};

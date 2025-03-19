@@ -21,6 +21,7 @@ client_setup:
 
 server_setup:
 	cd server; \
+	cargo doc --no-deps; \
 	cargo run --bin migrate
 
 server_run:

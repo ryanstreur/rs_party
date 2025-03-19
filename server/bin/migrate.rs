@@ -2,6 +2,7 @@ use rs_party::db::get_pool;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
+/// Main function to run migrations
 pub async fn main() {
     tracing_subscriber::registry()
         .with(

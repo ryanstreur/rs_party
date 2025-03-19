@@ -1,3 +1,5 @@
+//! Coordinates access to database
+
 extern crate bcrypt;
 use axum::http::StatusCode;
 use chrono::Utc;
@@ -75,6 +77,7 @@ pub async fn insert_user(
     .await
 }
 
+/// Retrieve a user from the database by id
 pub async fn get_user(
     conn: &mut PoolConnection<Postgres>,
     user_id: &i64,
@@ -91,6 +94,7 @@ pub async fn get_user(
     .await
 }
 
+/// Update a user in the database
 pub async fn update_user(
     conn: &mut PoolConnection<Postgres>,
     user: &model::UserWithPassword,
@@ -112,6 +116,7 @@ pub async fn update_user(
     .await
 }
 
+/// Delete a user in the database by id
 pub async fn delete_user(
     conn: &mut PoolConnection<Postgres>,
     user_id: &i64,
@@ -228,6 +233,7 @@ DELETE FROM rs_party.session s WHERE s.session_key = $1"#,
     .await
 }
 
+/// Given a session key, retrieve the corresponding session and user data
 pub async fn get_user_from_session_key(
     conn: &mut PoolConnection<Postgres>,
     session_key: &Uuid,
@@ -255,6 +261,7 @@ limit 1;
     .await
 }
 
+/// Insert a log entry into the database
 pub async fn insert_log_entry(
     logging_conn: &mut PoolConnection<Postgres>,
     entry: RequestLogEntry,
@@ -273,6 +280,7 @@ VALUES ($1, $2, $3, $4, $5);
     .await
 }
 
+/// Insert an event into the database
 pub async fn insert_event(
     conn: &mut PoolConnection<Postgres>,
     new_event: &model::Event,
@@ -302,6 +310,7 @@ pub async fn insert_event(
     }
 }
 
+/// Get event from database by ID
 pub async fn get_event(
     conn: &mut PoolConnection<Postgres>,
     event_id: &i64,
@@ -312,6 +321,7 @@ pub async fn get_event(
         .await
 }
 
+/// Update event in database
 pub async fn update_event(
     conn: &mut PoolConnection<Postgres>,
     event: &model::Event,
@@ -354,6 +364,7 @@ where r."role_type" = 'owner' and u.id = $1;
     .await
 }
 
+/// Delete event in database by ID
 pub async fn delete_event(
     conn: &mut PoolConnection<Postgres>,
     event_id: &i64,
@@ -364,6 +375,7 @@ pub async fn delete_event(
         .await
 }
 
+/// Get user role from database from user ID and event ID
 pub async fn get_event_user_role(
     conn: &mut PoolConnection<Postgres>,
     user_id: &i64,
@@ -387,6 +399,7 @@ pub async fn get_event_user_role(
     }
 }
 
+/// Insert role into database
 pub async fn insert_role(
     conn: &mut PoolConnection<Postgres>,
     new_role: &model::Role,
@@ -406,6 +419,7 @@ pub async fn insert_role(
     .await
 }
 
+/// Get role from database by ID
 pub async fn get_role(
     conn: &mut PoolConnection<Postgres>,
     role_id: &i64,
@@ -416,6 +430,7 @@ pub async fn get_role(
         .await
 }
 
+/// Update role in database
 pub async fn update_role(
     conn: &mut PoolConnection<Postgres>,
     role: &model::Role,
@@ -438,6 +453,7 @@ pub async fn update_role(
     .await
 }
 
+/// Delete role from database by ID
 pub async fn delete_role(
     conn: &mut PoolConnection<Postgres>,
     role_id: &i64,

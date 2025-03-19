@@ -67,6 +67,8 @@ pub fn build_config() -> Configuration {
     }
 }
 
+/// Retrieve DB connection string from environment variables, defaulting to
+/// the default Postgresql connection parameters
 pub fn get_db_connection_string() -> String {
     let pg_user = env::var("POSTGRES_USER").unwrap_or(DEFAULT_PG_USER.to_string());
     let pg_pw = env::var("POSTGRES_PASSWORD").unwrap_or(DEFAULT_PG_PASSWORD.to_string());
