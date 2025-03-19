@@ -60,6 +60,32 @@ Originally this project was intended to be a party planner application. Below is
 - [ ] Authenticated Client can view events they are invited to.   
 - [ ] Requests and Responses are logged in database               
 
+## Notes on Testing
+
+To run the automated server tests, you can run `cargo test`. To test through the UI, you can 
+
+- Visit the registration route in the UI to create a new account.
+  - Don't worry about the "Confirm Password" field. It is, unfortunately, ornamental.
+- Visit the login field to log in with the email address and password which you used in the registration flow.
+  - There is also a secure admin account which gets created during database migration. It is very secure. The email address is "admin@example.com", and the password is "admin". You can also use this account to log into the system.
+- You can visit the "New Event" route and submit the form to create a new event.
+  - Note here: I have realized that, despite having start dates, start times, and a text field for "place", events currently have no "name" field. This makes the application less useful - the user will be able to record where they want to be and at what time, but not why.
+- You can visit the "Events" route to view the events listed in the database for that user. They are currently listed as JSON.
+
+## Notes on Execution - Wouldas, Couldas, Shouldas
+
+Were I to go through this project again from scratch I would have
+
+- Used an ORM instead of hand-coding the data access layer in raw SQL
+- Stuck with Rocket or just started with Axum rather than switching from the former to the latter halfway through the term.
+- Worry less about tracing and more about testing.
+- Use `clap` to make the program configurable from the command line rather than relying exclusively on environment variables.
+
+I should have
+
+- Added more tests
+- Added more documentation comments
+
 ## Sources of Inspiration
 
 - User model - [Django web framework's `django.contrib.auth` module](https://docs.djangoproject.com/en/5.1/ref/contrib/auth/)
